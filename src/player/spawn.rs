@@ -125,8 +125,43 @@ pub fn system(
         });
 }
 
+pub fn change_animation_state(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut query: Query<&mut CurrentAnimation, With<Player>>,
+) {
+    let new_animation = {
+        if keys.just_pressed(KeyCode::KeyZ) {
+            Some(AnimationType::Idle)
+        } else if keys.just_pressed(KeyCode::KeyX) {
+            Some(AnimationType::Walk)
+        } else if keys.just_pressed(KeyCode::KeyC) {
+            Some(AnimationType::Death)
+        } else if keys.just_pressed(KeyCode::KeyD) {
+            Some(AnimationType::Hit)
+        } else {
+            None
+        }
+    };
+
+    let mut current_animation = query.single_mut();
+    if let Some(animation) = new_animation {
+        *current_animation = CurrentAnimation(animation);
+    }
+}
 
 pub fn update_animation_visibility(
     query: Query<(Entity, &Children, &CurrentAnimation), With<Player>>,
     mut animation_query: Query<(Entity, &mut Visibility, &AnimationType)>,
 ) {
+    for (_parent_entity, children, current_animation) in query.iter() {
+        for &child in children.iter() {
+            if let Ok((_, mut visibility, animation_type)) = animation_query.get_mut(child) {
+                *visibility = if current_animation.0 == *animation_type {
+                    Visibility::Visible
+                } else {
+                    Visibility::Hidden
+                };
+            }
+        }
+    }
+}

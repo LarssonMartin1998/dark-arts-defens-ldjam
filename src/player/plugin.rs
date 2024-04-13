@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
 use crate::player;
+
+#[derive(Resource)]
+pub struct AnimTimer(pub Timer);
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
@@ -11,6 +14,8 @@ impl Plugin for PlayerPlugin {
                 Update,
                 (
                     player::spawn::animate_sprite,
+                    player::spawn::update_animation_visibility,
+                    player::spawn::change_animation_state,
                 ),
             );
     }
