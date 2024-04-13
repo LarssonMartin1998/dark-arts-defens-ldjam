@@ -13,6 +13,7 @@ impl Plugin for PlayerPlugin {
             .add_systems(
                 Update,
                 (
+                    player::movement::system,
                     player::spawn::animate_sprite,
                     player::spawn::update_animation_visibility,
                     player::spawn::change_animation_state,

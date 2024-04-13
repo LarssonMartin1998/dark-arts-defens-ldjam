@@ -1,5 +1,6 @@
 pub mod dark_arts_defense;
 pub mod player {
+    pub mod movement;
     pub mod plugin;
     pub mod spawn;
 }
