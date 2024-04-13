@@ -1,16 +1,11 @@
+pub mod dark_arts_defense;
 use bevy::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_systems(Startup, setup)
+        .add_plugins((
+            DefaultPlugins.set(ImagePlugin::default_nearest()),
+            dark_arts_defense::DarkArtsDefensePlugin,
+        ))
         .run();
-}
-
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2dBundle::default());
-    commands.spawn(SpriteBundle {
-        texture: asset_server.load("catppuccin-logo.png"),
-        ..default()
-    });
 }
