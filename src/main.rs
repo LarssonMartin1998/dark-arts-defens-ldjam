@@ -3,7 +3,13 @@ pub mod player {
     pub mod movement;
     pub mod plugin;
     pub mod spawn;
+    pub mod summoning;
 }
+pub mod units {
+    pub mod unit_types;
+}
+pub mod mana;
+
 use bevy::prelude::*;
 
 fn main() {
