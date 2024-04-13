@@ -1,4 +1,8 @@
 pub mod dark_arts_defense;
+pub mod player {
+    pub mod plugin;
+    pub mod spawn;
+}
 use bevy::prelude::*;
 
 fn main() {
