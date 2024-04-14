@@ -8,6 +8,7 @@ pub enum AnimationType {
     Walk,
     Hit,
     Death,
+    Attack,
 }
 
 #[derive(Component, Clone, Default)]

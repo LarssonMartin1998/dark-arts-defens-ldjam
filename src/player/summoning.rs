@@ -1,8 +1,9 @@
-use crate::animation::spawn_animated_children;
 use crate::mana::Mana;
 use crate::player::spawn::Player;
+use crate::units::team::Team;
 use crate::units::unit_types::{
-    Acolyte, Cat, UnitChildrenSpawnParamsFactory, UnitResource, UnitType, Warrior,
+    spawn_unit, Acolyte, Cat, Knight, UnitChildrenSpawnParamsFactory, UnitResource, UnitType,
+    Warrior,
 };
 use bevy::prelude::*;
 
@@ -57,6 +58,13 @@ pub fn system(
                 Cat,
                 transform,
             ),
+            UnitType::Knight => summon_unit(
+                &mut commands,
+                &asset_server,
+                &mut texture_atlas_layouts,
+                Knight,
+                transform,
+            ),
         }
 
         mana.0 -= unit_cost;
@@ -80,14 +88,12 @@ fn summon_unit(
     unit_component: impl UnitChildrenSpawnParamsFactory,
     player_transform: &Transform,
 ) {
-    let mut bundle = unit_component.create_bundle();
-    bundle.transform.translation = player_transform.translation;
-    commands.spawn(bundle).with_children(|parent| {
-        spawn_animated_children(
-            asset_server,
-            texture_atlas_layouts,
-            parent,
-            unit_component.create_children_spawn_params(),
-        );
-    });
+    spawn_unit(
+        commands,
+        asset_server,
+        texture_atlas_layouts,
+        unit_component,
+        Team::Evil,
+        player_transform.translation.truncate(),
+    );
 }

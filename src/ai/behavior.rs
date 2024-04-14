@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::velocity::Velocity;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Behavior {
     Idle(IdleBehavior),           // Do nothing
     MoveOrigo(MoveOrigoBehavior), // Special case for enemies with no targets in range, move towards origo instead
@@ -14,17 +14,17 @@ pub enum Behavior {
 
 impl Default for Behavior {
     fn default() -> Self {
-        Behavior::Idle(IdleBehavior {})
+        Behavior::Wander(WanderBehaviorBundle::default())
     }
 }
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Debug)]
 pub struct IdleBehavior {}
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Debug)]
 pub struct MoveOrigoBehavior {}
 
-#[derive(Bundle, Clone)]
+#[derive(Bundle, Clone, Debug)]
 pub struct WanderBehaviorBundle {
     pub wander_behavior: WanderBehavior,
     pub wander_timer: WanderBehaviorWanderTimer,
@@ -51,11 +51,11 @@ impl Default for WanderBehaviorBundle {
     }
 }
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Debug)]
 pub struct WanderBehaviorWanderTimer(pub Timer);
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Debug)]
 pub struct WanderBehaviorWaitTimer(pub Timer);
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Debug)]
 pub struct WanderBehavior {
     pub wait_time: f32,
     pub wander_time: f32,
@@ -63,16 +63,16 @@ pub struct WanderBehavior {
     pub is_wandering: bool,
 }
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Debug)]
 pub struct ChaseBehavior {}
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Debug)]
 pub struct FleeBehavior {}
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Debug)]
 pub struct AttackBehavior {}
 
-#[derive(Component, Default)]
+#[derive(Component, Default, Clone)]
 pub struct CurrentBehavior(pub Behavior);
 
 #[derive(Component, Clone)]
@@ -88,7 +88,7 @@ impl Default for SupportedBehaviors {
     }
 }
 
-#[derive(Bundle, Default)]
+#[derive(Bundle, Default, Clone)]
 pub struct BehaviorBundle {
     pub current_behavior: CurrentBehavior,
     pub supported_behaviors: SupportedBehaviors,
@@ -123,6 +123,7 @@ pub fn behavior_state_machine(
 
         behaviors_that_want_to_be_active.sort_by(|a, b| b.1.cmp(&a.1));
         let highest_prio_behavior = &behaviors_that_want_to_be_active[0].0;
+
         current_behavior.0 = highest_prio_behavior.clone();
     }
 }
@@ -159,6 +160,7 @@ pub fn execute_behavior_wander(
     for (current_behavior, mut wander_behavior, mut wait_timer, mut wander_timer, mut velocity) in
         query.iter_mut()
     {
+        println!("execute_behavior_wander");
         if let Behavior::Wander(_) = current_behavior.0 {
             if wander_behavior.is_wandering {
                 if wander_timer.0.tick(time.delta()).just_finished() {
