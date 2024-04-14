@@ -12,7 +12,7 @@ pub fn system(
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     keys: Res<ButtonInput<KeyCode>>,
     unit_configs: Res<UnitResource>,
-    mut query: Query<&mut Mana, With<Player>>,
+    mut query: Query<(&mut Mana, &Transform), With<Player>>,
 ) {
     let column_staggered_colemak_binds = vec![
         (KeyCode::KeyN, UnitType::Acolyte),
@@ -29,7 +29,7 @@ pub fn system(
     // let pressed_units = handle_input(&keys, &row_staggered_qwerty_binds);
 
     pressed_units.into_iter().for_each(|(_, unit)| {
-        let mut mana = query.single_mut();
+        let (mut mana, transform) = query.single_mut();
         let unit_cost = unit_configs.get(*unit).cost;
         if mana.0 < unit_cost {
             return;
@@ -41,18 +41,21 @@ pub fn system(
                 &asset_server,
                 &mut texture_atlas_layouts,
                 Acolyte,
+                transform,
             ),
             UnitType::Warrior => summon_unit(
                 &mut commands,
                 &asset_server,
                 &mut texture_atlas_layouts,
                 Warrior,
+                transform,
             ),
             UnitType::Cat => summon_unit(
                 &mut commands,
                 &asset_server,
                 &mut texture_atlas_layouts,
                 Cat,
+                transform,
             ),
         }
 
@@ -75,15 +78,16 @@ fn summon_unit(
     asset_server: &Res<AssetServer>,
     texture_atlas_layouts: &mut ResMut<Assets<TextureAtlasLayout>>,
     unit_component: impl UnitChildrenSpawnParamsFactory,
+    player_transform: &Transform,
 ) {
-    commands
-        .spawn(unit_component.create_bundle())
-        .with_children(|parent| {
-            spawn_animated_children(
-                asset_server,
-                texture_atlas_layouts,
-                parent,
-                unit_component.create_children_spawn_params(),
-            );
-        });
+    let mut bundle = unit_component.create_bundle();
+    bundle.transform.translation = player_transform.translation;
+    commands.spawn(bundle).with_children(|parent| {
+        spawn_animated_children(
+            asset_server,
+            texture_atlas_layouts,
+            parent,
+            unit_component.create_children_spawn_params(),
+        );
+    });
 }
