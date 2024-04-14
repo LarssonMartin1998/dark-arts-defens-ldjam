@@ -26,10 +26,34 @@ pub fn system(
         ))
         .with_children(|parent| {
             let children_params: Vec<AnimatedChildSpawnParams> = [
-                ("player/player_idle.png", (50, 1), 49, AnimationType::Idle),
-                ("player/player_walk.png", (10, 1), 9, AnimationType::Walk),
-                ("player/player_hit.png", (9, 1), 8, AnimationType::Hit),
-                ("player/player_death.png", (52, 1), 51, AnimationType::Death),
+                (
+                    "player/player_idle.png",
+                    Vec2::new(96.0, 96.0),
+                    (50, 1),
+                    49,
+                    AnimationType::Idle,
+                ),
+                (
+                    "player/player_walk.png",
+                    Vec2::new(96.0, 96.0),
+                    (10, 1),
+                    9,
+                    AnimationType::Walk,
+                ),
+                (
+                    "player/player_hit.png",
+                    Vec2::new(96.0, 96.0),
+                    (9, 1),
+                    8,
+                    AnimationType::Hit,
+                ),
+                (
+                    "player/player_death.png",
+                    Vec2::new(96.0, 96.0),
+                    (52, 1),
+                    51,
+                    AnimationType::Death,
+                ),
             ]
             .into_iter()
             .map(|data| data.into())

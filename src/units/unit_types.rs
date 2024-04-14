@@ -34,17 +34,25 @@ impl UnitChildrenSpawnParamsFactory for Acolyte {
     fn create_bundle(&self) -> UnitBundle {
         UnitBundle {
             movement: Movement { speed: 75.0 },
+            transform: Transform::from_scale(Vec3::splat(0.8)),
             ..default()
         }
     }
 
     fn create_children_spawn_params(&self) -> Vec<AnimatedChildSpawnParams> {
         [
-            ("acolyte/acolyte_idle.png", (50, 1), 49, AnimationType::Idle),
+            (
+                "acolyte/acolyte_idle.png",
+                Vec2::new(80.0, 80.0),
+                (3, 4),
+                9,
+                AnimationType::Idle,
+            ),
             (
                 "acolyte/acolyte_death.png",
-                (52, 1),
-                51,
+                Vec2::new(80.0, 80.0),
+                (3, 4),
+                9,
                 AnimationType::Death,
             ),
         ]
@@ -60,19 +68,39 @@ impl UnitChildrenSpawnParamsFactory for Warrior {
     fn create_bundle(&self) -> UnitBundle {
         UnitBundle {
             movement: Movement { speed: 200.0 },
+            transform: Transform::from_scale(Vec3::splat(1.8)),
             ..default()
         }
     }
 
     fn create_children_spawn_params(&self) -> Vec<AnimatedChildSpawnParams> {
         [
-            ("warrior/warrior_idle.png", (50, 1), 49, AnimationType::Idle),
-            ("warrior/warrior_walk.png", (10, 1), 9, AnimationType::Walk),
-            ("warrior/warrior_hit.png", (9, 1), 8, AnimationType::Hit),
+            (
+                "warrior/warrior_idle.png",
+                Vec2::new(96.0, 96.0),
+                (21, 1),
+                20,
+                AnimationType::Idle,
+            ),
+            (
+                "warrior/warrior_walk.png",
+                Vec2::new(96.0, 96.0),
+                (11, 1),
+                10,
+                AnimationType::Walk,
+            ),
+            (
+                "warrior/warrior_hit.png",
+                Vec2::new(96.0, 96.0),
+                (9, 1),
+                8,
+                AnimationType::Hit,
+            ),
             (
                 "warrior/warrior_death.png",
-                (52, 1),
-                51,
+                Vec2::new(96.0, 96.0),
+                (36, 1),
+                35,
                 AnimationType::Death,
             ),
         ]
@@ -88,16 +116,41 @@ impl UnitChildrenSpawnParamsFactory for Cat {
     fn create_bundle(&self) -> UnitBundle {
         UnitBundle {
             movement: Movement { speed: 250.0 },
+            transform: Transform::from_scale(Vec3::splat(1.4)),
             ..default()
         }
     }
 
     fn create_children_spawn_params(&self) -> Vec<AnimatedChildSpawnParams> {
         [
-            ("cat/cat_idle.png", (50, 1), 49, AnimationType::Idle),
-            ("cat/cat_walk.png", (10, 1), 9, AnimationType::Walk),
-            ("cat/cat_hit.png", (9, 1), 8, AnimationType::Hit),
-            ("cat/cat_death.png", (52, 1), 51, AnimationType::Death),
+            (
+                "cat/cat_idle.png",
+                Vec2::new(96.0, 96.0),
+                (10, 1),
+                9,
+                AnimationType::Idle,
+            ),
+            (
+                "cat/cat_walk.png",
+                Vec2::new(96.0, 96.0),
+                (8, 1),
+                7,
+                AnimationType::Walk,
+            ),
+            (
+                "cat/cat_hit.png",
+                Vec2::new(96.0, 96.0),
+                (9, 1),
+                8,
+                AnimationType::Hit,
+            ),
+            (
+                "cat/cat_death.png",
+                Vec2::new(96.0, 96.0),
+                (18, 1),
+                17,
+                AnimationType::Death,
+            ),
         ]
         .into_iter()
         .map(|data| data.into())

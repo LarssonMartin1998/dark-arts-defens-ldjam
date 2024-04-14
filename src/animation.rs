@@ -47,19 +47,21 @@ pub struct AnimationBundle {
 }
 
 pub struct AnimatedChildSpawnParams {
-    pub texture_path: &'static str,
+    pub texture_path: String,
+    pub tile_size: Vec2,
     pub grid: (usize, usize),
     pub last_index: usize,
     pub animation_type: AnimationType,
 }
 
-impl From<(&'static str, (usize, usize), usize, AnimationType)> for AnimatedChildSpawnParams {
-    fn from(item: (&'static str, (usize, usize), usize, AnimationType)) -> Self {
+impl From<(&str, Vec2, (usize, usize), usize, AnimationType)> for AnimatedChildSpawnParams {
+    fn from(item: (&str, Vec2, (usize, usize), usize, AnimationType)) -> Self {
         Self {
-            texture_path: item.0,
-            grid: item.1,
-            last_index: item.2,
-            animation_type: item.3,
+            texture_path: item.0.to_owned(),
+            tile_size: item.1,
+            grid: item.2,
+            last_index: item.3,
+            animation_type: item.4,
         }
     }
 }
@@ -72,7 +74,7 @@ pub fn spawn_animated_children(
 ) {
     children_params.into_iter().for_each(|child_param| {
         let layout = TextureAtlasLayout::from_grid(
-            Vec2::new(96.0, 96.0),
+            child_param.tile_size,
             child_param.grid.0,
             child_param.grid.1,
             None,
