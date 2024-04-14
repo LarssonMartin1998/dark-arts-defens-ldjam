@@ -1,3 +1,4 @@
+pub mod animation;
 pub mod dark_arts_defense;
 pub mod player {
     pub mod movement;
@@ -9,6 +10,8 @@ pub mod units {
     pub mod unit_types;
 }
 pub mod mana;
+pub mod movement;
+pub mod velocity;
 
 use bevy::prelude::*;
 
