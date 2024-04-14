@@ -4,6 +4,7 @@ use crate::ai;
 use crate::animation;
 use crate::enemies;
 use crate::player;
+use crate::ui;
 use crate::units::acolyte;
 use crate::velocity;
 
@@ -15,6 +16,7 @@ impl Plugin for DarkArtsDefensePlugin {
             player::plugin::PlayerPlugin,
             enemies::plugin::EnemyPlugin,
             ai::plugin::AiPlugin,
+            ui::plugin::UiPlugin,
         ))
         .add_systems(
             Update,

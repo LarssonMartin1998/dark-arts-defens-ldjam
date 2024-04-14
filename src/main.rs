@@ -23,6 +23,11 @@ pub mod ai {
     pub mod behavior;
     pub mod plugin;
 }
+pub mod ui {
+    pub mod health_text;
+    pub mod mana_text;
+    pub mod plugin;
+}
 
 use bevy::prelude::*;
 use bevy::window::{EnabledButtons, WindowMode, WindowResolution};
