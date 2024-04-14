@@ -7,6 +7,7 @@ pub mod player {
     pub mod summoning;
 }
 pub mod units {
+    pub mod acolyte;
     pub mod health;
     pub mod team;
     pub mod unit_types;

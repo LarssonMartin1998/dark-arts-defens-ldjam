@@ -1,12 +1,13 @@
 use crate::ai::behavior::{
-    AttackBehaviorBundle, Behavior, BehaviorBundle, ChaseBehavior, CurrentBehavior,
-    MoveOrigoBehavior, SupportedBehaviors, WanderBehaviorBundle,
+    AttackBehaviorBundle, Behavior, BehaviorBundle, ChaseBehavior, CurrentBehavior, FleeBehavior,
+    IdleBehavior, MoveOrigoBehavior, SupportedBehaviors, WanderBehaviorBundle,
 };
 use crate::animation::{spawn_animated_children, CurrentAnimation};
 use crate::animation::{AnimatedChildSpawnParams, AnimationType};
 use crate::movement::Movement;
 use crate::units::{health::Health, team::CurrentTeam};
 use crate::velocity::Velocity;
+use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use std::collections::HashMap;
 
@@ -40,8 +41,22 @@ pub trait UnitChildrenSpawnParamsFactory {
     fn create_children_spawn_params(&self) -> Vec<AnimatedChildSpawnParams>;
 }
 
-#[derive(Component)]
-pub struct Acolyte;
+#[derive(Component, Clone)]
+pub struct Acolyte {
+    pub give_mana_timer: Timer,
+    pub mana_amount: u8,
+}
+
+impl Default for Acolyte {
+    fn default() -> Self {
+        let mana_cooldown = 1.0;
+        Self {
+            give_mana_timer: Timer::from_seconds(mana_cooldown, TimerMode::Repeating),
+            mana_amount: 3,
+        }
+    }
+}
+
 impl UnitChildrenSpawnParamsFactory for Acolyte {
     fn create_unit_bundle(&self) -> UnitBundle {
         UnitBundle {
@@ -52,7 +67,13 @@ impl UnitChildrenSpawnParamsFactory for Acolyte {
     }
 
     fn create_behavior_bundle(&self) -> BehaviorBundle {
-        BehaviorBundle::default()
+        BehaviorBundle {
+            current_behavior: CurrentBehavior(Behavior::Idle(IdleBehavior {})),
+            supported_behaviors: SupportedBehaviors(vec![
+                (Behavior::Idle(IdleBehavior {}), 5),
+                (Behavior::Flee(FleeBehavior {}), 10),
+            ]),
+        }
     }
 
     fn create_children_spawn_params(&self) -> Vec<AnimatedChildSpawnParams> {
@@ -85,7 +106,7 @@ impl UnitChildrenSpawnParamsFactory for Acolyte {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Warrior;
 impl UnitChildrenSpawnParamsFactory for Warrior {
     fn create_unit_bundle(&self) -> UnitBundle {
@@ -137,7 +158,7 @@ impl UnitChildrenSpawnParamsFactory for Warrior {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Cat;
 impl UnitChildrenSpawnParamsFactory for Cat {
     fn create_unit_bundle(&self) -> UnitBundle {
@@ -189,7 +210,7 @@ impl UnitChildrenSpawnParamsFactory for Cat {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Knight;
 impl UnitChildrenSpawnParamsFactory for Knight {
     fn create_unit_bundle(&self) -> UnitBundle {
@@ -259,7 +280,7 @@ impl UnitResource {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UnitConfig {
-    pub cost: u32,
+    pub cost: u8,
 }
 
 impl Default for UnitResource {
@@ -277,14 +298,14 @@ impl Default for UnitResource {
     }
 }
 
-pub fn spawn_unit(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    texture_atlas_layouts: &mut ResMut<Assets<TextureAtlasLayout>>,
-    unit_component: impl UnitChildrenSpawnParamsFactory,
+pub fn spawn_unit<'a>(
+    commands: &'a mut Commands,
+    asset_server: &'a Res<AssetServer>,
+    texture_atlas_layouts: &'a mut ResMut<Assets<TextureAtlasLayout>>,
+    unit_component: impl UnitChildrenSpawnParamsFactory + Clone,
     team: Team,
     spawn_position: Vec2,
-) {
+) -> EntityCommands<'a> {
     let mut unit_bundle = unit_component.create_unit_bundle();
     unit_bundle.team = CurrentTeam(team);
     unit_bundle.transform.translation = Vec3::new(spawn_position.x, spawn_position.y, 0.0);
@@ -327,4 +348,6 @@ pub fn spawn_unit(
             unit_component.create_children_spawn_params(),
         );
     });
+
+    entity
 }

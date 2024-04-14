@@ -5,6 +5,7 @@ use crate::units::unit_types::{
     spawn_unit, Acolyte, Cat, Knight, UnitChildrenSpawnParamsFactory, UnitResource, UnitType,
     Warrior,
 };
+use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 
 pub fn system(
@@ -32,7 +33,7 @@ pub fn system(
     pressed_units.into_iter().for_each(|(_, unit)| {
         let (mut mana, transform) = query.single_mut();
         let unit_cost = unit_configs.get(*unit).cost;
-        if mana.0 < unit_cost {
+        if mana.current_mana < unit_cost {
             return;
         }
 
@@ -41,34 +42,38 @@ pub fn system(
                 &mut commands,
                 &asset_server,
                 &mut texture_atlas_layouts,
-                Acolyte,
+                Acolyte::default(),
                 transform,
-            ),
+            )
+            .insert(Acolyte::default()),
             UnitType::Warrior => summon_unit(
                 &mut commands,
                 &asset_server,
                 &mut texture_atlas_layouts,
                 Warrior,
                 transform,
-            ),
+            )
+            .insert(Warrior),
             UnitType::Cat => summon_unit(
                 &mut commands,
                 &asset_server,
                 &mut texture_atlas_layouts,
                 Cat,
                 transform,
-            ),
+            )
+            .insert(Cat),
             UnitType::Knight => summon_unit(
                 &mut commands,
                 &asset_server,
                 &mut texture_atlas_layouts,
                 Knight,
                 transform,
-            ),
-        }
+            )
+            .insert(Knight),
+        };
 
-        mana.0 -= unit_cost;
-        println!("Mana: {}", mana.0);
+        mana.current_mana -= unit_cost;
+        println!("Mana: {}", mana.current_mana);
     });
 }
 
@@ -81,13 +86,13 @@ fn handle_input<'a>(
         .filter(move |(key, _unit)| keys.just_pressed(*key))
 }
 
-fn summon_unit(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    texture_atlas_layouts: &mut ResMut<Assets<TextureAtlasLayout>>,
-    unit_component: impl UnitChildrenSpawnParamsFactory,
-    player_transform: &Transform,
-) {
+fn summon_unit<'a>(
+    commands: &'a mut Commands,
+    asset_server: &'a Res<AssetServer>,
+    texture_atlas_layouts: &'a mut ResMut<Assets<TextureAtlasLayout>>,
+    unit_component: impl UnitChildrenSpawnParamsFactory + Clone,
+    player_transform: &'a Transform,
+) -> EntityCommands<'a> {
     spawn_unit(
         commands,
         asset_server,
@@ -95,5 +100,5 @@ fn summon_unit(
         unit_component,
         Team::Evil,
         player_transform.translation.truncate(),
-    );
+    )
 }

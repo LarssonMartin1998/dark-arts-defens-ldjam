@@ -22,7 +22,10 @@ pub fn system(
                 ..default()
             },
             Player,
-            Mana(100),
+            Mana {
+                current_mana: 100,
+                max_mana: 100,
+            },
         ))
         .with_children(|parent| {
             let children_params: Vec<AnimatedChildSpawnParams> = [

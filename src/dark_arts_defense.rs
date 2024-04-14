@@ -4,6 +4,7 @@ use crate::ai;
 use crate::animation;
 use crate::enemies;
 use crate::player;
+use crate::units::acolyte;
 use crate::velocity;
 
 pub struct DarkArtsDefensePlugin;
@@ -23,6 +24,7 @@ impl Plugin for DarkArtsDefensePlugin {
                 animation::handle_anim_state,
                 velocity::translate,
                 velocity::change_sprite_direction,
+                acolyte::acolyte_mana_giver,
             ),
         );
     }
