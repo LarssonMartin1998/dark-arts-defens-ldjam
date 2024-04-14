@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 
-#[derive(Eq, PartialEq, Default)]
+#[derive(Eq, PartialEq, Default, Clone)]
 pub enum Team {
     #[default]
     Evil, // In this game, the player is evil
     Good,
 }
 
-#[derive(Component, Default)]
+#[derive(Component, Default, Clone)]
 pub struct CurrentTeam(pub Team);
 
 impl CurrentTeam {
