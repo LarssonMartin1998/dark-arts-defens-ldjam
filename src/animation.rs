@@ -1,4 +1,4 @@
-use crate::{player::spawn::Player, velocity::Velocity};
+use crate::velocity::Velocity;
 use bevy::prelude::*;
 
 #[derive(Component, Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -125,30 +125,6 @@ pub fn handle_anim_state(mut query: Query<(&mut CurrentAnimation, &Velocity)>) {
         } else {
             *current_animation = CurrentAnimation(AnimationType::Idle);
         }
-    }
-}
-
-pub fn debug_change_anim_state(
-    keys: Res<ButtonInput<KeyCode>>,
-    mut query: Query<&mut CurrentAnimation, With<Player>>,
-) {
-    let new_animation = {
-        if keys.just_pressed(KeyCode::KeyZ) {
-            Some(AnimationType::Idle)
-        } else if keys.just_pressed(KeyCode::KeyX) {
-            Some(AnimationType::Walk)
-        } else if keys.just_pressed(KeyCode::KeyC) {
-            Some(AnimationType::Death)
-        } else if keys.just_pressed(KeyCode::KeyD) {
-            Some(AnimationType::Hit)
-        } else {
-            None
-        }
-    };
-
-    let mut current_animation = query.single_mut();
-    if let Some(animation) = new_animation {
-        *current_animation = CurrentAnimation(animation);
     }
 }
 

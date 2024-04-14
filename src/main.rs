@@ -9,12 +9,20 @@ pub mod player {
 pub mod units {
     pub mod unit_types;
 }
+pub mod enemies {
+    pub mod enemy_spawner;
+    pub mod plugin;
+}
 pub mod mana;
 pub mod movement;
 pub mod velocity;
+pub mod ai {
+    pub mod behavior;
+    pub mod plugin;
+}
 
 use bevy::prelude::*;
-use bevy::window::{EnabledButtons, WindowMode, WindowPosition, WindowResolution};
+use bevy::window::{EnabledButtons, WindowMode, WindowResolution};
 
 fn main() {
     App::new()
