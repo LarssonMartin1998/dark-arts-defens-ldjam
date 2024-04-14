@@ -1,12 +1,8 @@
-use crate::movement::Movement;
 use crate::player::spawn::Player;
 use crate::velocity::Velocity;
 use bevy::prelude::*;
 
-pub fn system(
-    keys: Res<ButtonInput<KeyCode>>,
-    query: Query<(&Movement, &mut Velocity), With<Player>>,
-) {
+pub fn system(keys: Res<ButtonInput<KeyCode>>, query: Query<&mut Velocity, With<Player>>) {
     let column_staggered_colemak_binds =
         [KeyCode::KeyF, KeyCode::KeyR, KeyCode::KeyS, KeyCode::KeyT];
     // let row_staggered_qwerty_binds = [KeyCode::KeyW, KeyCode::KeyA, KeyCode::KeyS, KeyCode::KeyD];
@@ -34,7 +30,7 @@ fn construct_input_vector(keys: Res<ButtonInput<KeyCode>>, binds: [KeyCode; 4]) 
     move_input
 }
 
-fn handle_movement(mut query: Query<(&Movement, &mut Velocity), With<Player>>, move_input: Vec2) {
-    let (movement, mut velocity) = query.single_mut();
-    velocity.0 = movement.speed * move_input;
+fn handle_movement(mut query: Query<&mut Velocity, With<Player>>, move_input: Vec2) {
+    let mut velocity = query.single_mut();
+    velocity.0 = move_input;
 }

@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 use bevy::window::Window;
 
-use crate::ai::behavior::{Behavior, BehaviorBundle, CurrentBehavior, SupportedBehaviors};
+use crate::ai::behavior::{
+    Behavior, BehaviorBundle, CurrentBehavior, MoveOrigoBehavior, SupportedBehaviors,
+    WanderBehaviorBundle,
+};
 use crate::animation::spawn_animated_children;
 use crate::enemies::plugin::SpawnTimer;
 use crate::units::unit_types::{Cat, UnitChildrenSpawnParamsFactory};
@@ -71,22 +74,48 @@ pub fn spawn_enemies(
     let cat = Cat;
     let mut bundle = cat.create_bundle();
     bundle.transform.translation = Vec3::new(spawn_position.x, spawn_position.y, 0.0);
-    let supported_behaviors = SupportedBehaviors(vec![Behavior::Wander(4)]);
-    commands
-        .spawn((
-            bundle,
-            BehaviorBundle {
-                current_behavior: CurrentBehavior(Behavior::Wander(4)),
-                supported_behaviors,
-                ..default()
-            },
-        ))
-        .with_children(|parent| {
-            spawn_animated_children(
-                &asset_server,
-                &mut texture_atlas_layouts,
-                parent,
-                cat.create_children_spawn_params(),
-            );
-        });
+    let start_behavior = Behavior::MoveOrigo(MoveOrigoBehavior {});
+    let supported_behaviors = SupportedBehaviors(vec![
+        (start_behavior.clone(), 5),
+        (Behavior::Wander(WanderBehaviorBundle::default()), 3),
+    ]);
+    let mut entity = commands.spawn((
+        bundle,
+        BehaviorBundle {
+            current_behavior: CurrentBehavior(start_behavior),
+            supported_behaviors: supported_behaviors.clone(),
+        },
+    ));
+
+    supported_behaviors.0.iter().for_each(|behavior| {
+        match behavior {
+            (Behavior::Idle(behavior), _) => {
+                entity.insert(*behavior);
+            }
+            (Behavior::MoveOrigo(behavior), _) => {
+                entity.insert(*behavior);
+            }
+            (Behavior::Wander(behavior), _) => {
+                entity.insert(behavior.clone());
+            }
+            (Behavior::Chase(behavior), _) => {
+                entity.insert(*behavior);
+            }
+            (Behavior::Flee(behavior), _) => {
+                entity.insert(*behavior);
+            }
+            (Behavior::Attack(behavior), _) => {
+                entity.insert(*behavior);
+            }
+        };
+    });
+
+    entity.with_children(|parent| {
+        spawn_animated_children(
+            &asset_server,
+            &mut texture_atlas_layouts,
+            parent,
+            cat.create_children_spawn_params(),
+        );
+    });
 }

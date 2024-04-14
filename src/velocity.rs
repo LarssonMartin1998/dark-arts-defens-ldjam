@@ -1,12 +1,14 @@
 use bevy::prelude::*;
 
+use crate::movement::Movement;
+
 #[derive(Component, Default)]
 pub struct Velocity(pub Vec2);
 
-pub fn translate(time: Res<Time>, mut query: Query<(&Velocity, &mut Transform)>) {
-    for (velocity, mut transform) in query.iter_mut() {
-        transform.translation.x += velocity.0.x * time.delta_seconds();
-        transform.translation.y += velocity.0.y * time.delta_seconds();
+pub fn translate(time: Res<Time>, mut query: Query<(&Velocity, &Movement, &mut Transform)>) {
+    for (velocity, movement, mut transform) in query.iter_mut() {
+        transform.translation.x += velocity.0.x * movement.speed * time.delta_seconds();
+        transform.translation.y += velocity.0.y * movement.speed * time.delta_seconds();
     }
 }
 
