@@ -17,7 +17,7 @@ pub fn system(
     let column_staggered_colemak_binds = vec![
         (KeyCode::KeyN, UnitType::Acolyte),
         (KeyCode::KeyE, UnitType::Warrior),
-        (KeyCode::KeyO, UnitType::Cat),
+        (KeyCode::KeyI, UnitType::Cat),
     ];
     let pressed_units = handle_input(&keys, &column_staggered_colemak_binds);
 
