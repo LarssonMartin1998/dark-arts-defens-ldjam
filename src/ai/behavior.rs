@@ -15,7 +15,7 @@ pub enum Behavior {
     Wander(WanderBehaviorBundle), // Friendly units wander around when waiting for enemies
     Chase(ChaseBehavior),         // Both friendly and enemy units chase their targets
     Flee(FleeBehavior),           // The acolyte tries to flee from enemies
-    Attack(AttackBehavior),       // Attack when in range
+    Attack(AttackBehaviorBundle), // Attack when in range
 }
 
 impl Default for Behavior {
@@ -75,8 +75,39 @@ pub struct ChaseBehavior {}
 #[derive(Component, Clone, Copy, Debug)]
 pub struct FleeBehavior {}
 
-#[derive(Component, Clone, Copy, Debug)]
-pub struct AttackBehavior {}
+#[derive(Bundle, Clone, Debug)]
+pub struct AttackBehaviorBundle {
+    pub attack_behavior: AttackBehavior,
+    pub attack_cooldown_timer: AttackCooldownTimer,
+}
+
+impl Default for AttackBehaviorBundle {
+    fn default() -> Self {
+        let attack_cooldown = 1.5;
+        AttackBehaviorBundle {
+            attack_behavior: AttackBehavior {
+                attack_cooldown,
+                random_cooldown_offset: 0.5,
+                random_attack_offset: 5.0,
+                damage: 10.0,
+            },
+            attack_cooldown_timer: AttackCooldownTimer(Timer::from_seconds(
+                attack_cooldown,
+                TimerMode::Once,
+            )),
+        }
+    }
+}
+
+#[derive(Component, Clone, Debug)]
+pub struct AttackCooldownTimer(pub Timer);
+#[derive(Component, Clone, Debug)]
+pub struct AttackBehavior {
+    pub attack_cooldown: f32,
+    pub random_cooldown_offset: f32,
+    pub random_attack_offset: f32,
+    pub damage: f32,
+}
 
 #[derive(Component, Default, Clone)]
 pub struct CurrentBehavior(pub Behavior);
@@ -89,7 +120,7 @@ impl Default for SupportedBehaviors {
         SupportedBehaviors(vec![
             (Behavior::Wander(WanderBehaviorBundle::default()), 5),
             (Behavior::Chase(ChaseBehavior {}), 10),
-            (Behavior::Attack(AttackBehavior {}), 15),
+            (Behavior::Attack(AttackBehaviorBundle::default()), 15),
         ])
     }
 }
@@ -104,14 +135,19 @@ fn get_chase_distance(window: &Window) -> f32 {
     window.width() * 0.5
 }
 
-fn is_other_in_distance(
+fn is_other_valid_target(
     team: &CurrentTeam,
+    health: &Health,
     other_team: &CurrentTeam,
     transform: &Transform,
     other_transform: &Transform,
     distance: f32,
 ) -> bool {
     if team.is_friendly(other_team) {
+        return false;
+    }
+
+    if health.is_dead() {
         return false;
     }
 
@@ -127,7 +163,7 @@ pub fn behavior_state_machine(
         &Transform,
         &CurrentTeam,
     )>,
-    others_query: Query<(&Transform, &CurrentTeam)>,
+    others_query: Query<(&Transform, &CurrentTeam, &Health)>,
     window_query: Query<&Window>,
 ) {
     for (mut current_behavior, supported_behaviors, transform, team) in query.iter_mut() {
@@ -136,38 +172,41 @@ pub fn behavior_state_machine(
             .0
             .iter()
             .filter(|behavior| {
-                let behavior_wants_to_be_active = match behavior {
-                    (Behavior::Idle(_b), _p) => true,
-                    (Behavior::MoveOrigo(_b), _p) => {
-                        let window = window_query.single();
-                        let distance_to_origo = transform.translation.truncate().length();
-                        distance_to_origo > window.height() * 0.2
-                    }
-                    (Behavior::Wander(_b), _p) => true,
-                    (Behavior::Chase(_b), _p) => {
-                        others_query.iter().any(|(other_transform, other_team)| {
-                            is_other_in_distance(
-                                team,
-                                other_team,
-                                transform,
-                                other_transform,
-                                get_chase_distance(window),
-                            )
-                        })
-                    }
-                    (Behavior::Flee(_b), _p) => false,
-                    (Behavior::Attack(_b), _p) => {
-                        others_query.iter().any(|(other_transform, other_team)| {
-                            is_other_in_distance(
-                                team,
-                                other_team,
-                                transform,
-                                other_transform,
-                                ATTACK_DISTANCE_MAX,
-                            )
-                        })
-                    }
-                };
+                let behavior_wants_to_be_active =
+                    match behavior {
+                        (Behavior::Idle(_b), _p) => true,
+                        (Behavior::MoveOrigo(_b), _p) => {
+                            let window = window_query.single();
+                            let distance_to_origo = transform.translation.truncate().length();
+                            distance_to_origo > window.height() * 0.2
+                        }
+                        (Behavior::Wander(_b), _p) => true,
+                        (Behavior::Chase(_b), _p) => others_query.iter().any(
+                            |(other_transform, other_team, other_health)| {
+                                is_other_valid_target(
+                                    team,
+                                    other_health,
+                                    other_team,
+                                    transform,
+                                    other_transform,
+                                    get_chase_distance(window),
+                                )
+                            },
+                        ),
+                        (Behavior::Flee(_b), _p) => false,
+                        (Behavior::Attack(_b), _p) => others_query.iter().any(
+                            |(other_transform, other_team, other_health)| {
+                                is_other_valid_target(
+                                    team,
+                                    other_health,
+                                    other_team,
+                                    transform,
+                                    other_transform,
+                                    ATTACK_DISTANCE_MAX,
+                                )
+                            },
+                        ),
+                    };
 
                 behavior_wants_to_be_active
             })
@@ -181,8 +220,8 @@ pub fn behavior_state_machine(
     }
 }
 
-pub fn execute_behavior_idle(mut query: Query<(&CurrentBehavior, &mut Velocity)>) {
-    for (current_behavior, mut velocity) in query.iter_mut() {
+pub fn execute_behavior_idle(mut query: Query<(&CurrentBehavior, &IdleBehavior, &mut Velocity)>) {
+    for (current_behavior, _, mut velocity) in query.iter_mut() {
         if let Behavior::Idle(_) = current_behavior.0 {
             velocity.0 = Vec2::ZERO;
         }
@@ -190,9 +229,14 @@ pub fn execute_behavior_idle(mut query: Query<(&CurrentBehavior, &mut Velocity)>
 }
 
 pub fn execute_behavior_move_origo(
-    mut query: Query<(&CurrentBehavior, &mut Velocity, &Transform)>,
+    mut query: Query<(
+        &CurrentBehavior,
+        &MoveOrigoBehavior,
+        &mut Velocity,
+        &Transform,
+    )>,
 ) {
-    for (current_behavior, mut velocity, transform) in query.iter_mut() {
+    for (current_behavior, _, mut velocity, transform) in query.iter_mut() {
         if let Behavior::MoveOrigo(_) = current_behavior.0 {
             let direction = -transform.translation.truncate();
             velocity.0 = direction.normalize_or_zero();
@@ -247,66 +291,31 @@ pub fn execute_behavior_wander(
 }
 
 pub fn execute_behavior_chase(
-    mut query: Query<(&CurrentBehavior, &Transform, &CurrentTeam, &mut Velocity)>,
+    mut query: Query<(
+        &CurrentBehavior,
+        &ChaseBehavior,
+        &Transform,
+        &CurrentTeam,
+        &mut Velocity,
+    )>,
     window_query: Query<&Window>,
-    others_query: Query<(&Transform, &CurrentTeam)>,
+    others_query: Query<(&Transform, &CurrentTeam, &Health)>,
 ) {
     query
         .iter_mut()
-        .for_each(|(current_behavior, transform, team, mut velocity)| {
+        .for_each(|(current_behavior, _, transform, team, mut velocity)| {
             if let Behavior::Chase(_) = current_behavior.0 {
                 let window = window_query.single();
                 let mut enemies_within_range = others_query
                     .iter()
-                    .filter(|(other_transform, other_team)| {
-                        is_other_in_distance(
+                    .filter(|(other_transform, other_team, other_health)| {
+                        is_other_valid_target(
                             team,
+                            other_health,
                             other_team,
                             transform,
                             other_transform,
                             get_chase_distance(window),
-                        )
-                    })
-                    .collect::<Vec<(&Transform, &CurrentTeam)>>();
-
-                enemies_within_range.sort_by(|a, b| {
-                    let distance_to_a =
-                        transform.translation.truncate() - a.0.translation.truncate();
-                    let distance_to_b =
-                        transform.translation.truncate() - b.0.translation.truncate();
-                    distance_to_a
-                        .length()
-                        .partial_cmp(&distance_to_b.length())
-                        .unwrap()
-                });
-
-                if let Some((enemy_transform, _enemy_team)) = enemies_within_range.first() {
-                    let direction =
-                        enemy_transform.translation.truncate() - transform.translation.truncate();
-                    velocity.0 = direction.normalize_or_zero();
-                }
-            }
-        });
-}
-
-pub fn execute_behavior_flee() {}
-pub fn execute_behavior_attack(
-    mut query: Query<(&CurrentBehavior, &Transform, &CurrentTeam, &mut Velocity)>,
-    mut others_query: Query<(&Transform, &CurrentTeam, &Health)>,
-) {
-    query
-        .iter_mut()
-        .for_each(|(current_behavior, transform, team, mut velocity)| {
-            if let Behavior::Attack(_) = current_behavior.0 {
-                let mut enemies_within_range = others_query
-                    .iter()
-                    .filter(|(other_transform, other_team, other_health)| {
-                        is_other_in_distance(
-                            team,
-                            other_team,
-                            transform,
-                            other_transform,
-                            ATTACK_DISTANCE_MAX,
                         )
                     })
                     .collect::<Vec<(&Transform, &CurrentTeam, &Health)>>();
@@ -322,7 +331,64 @@ pub fn execute_behavior_attack(
                         .unwrap()
                 });
 
-                if let Some((enemy_transform, _, enemy_health)) = enemies_within_range.first() {
+                if let Some((enemy_transform, _t, _h)) = enemies_within_range.first() {
+                    let direction =
+                        enemy_transform.translation.truncate() - transform.translation.truncate();
+                    velocity.0 = direction.normalize_or_zero();
+                }
+            }
+        });
+}
+
+pub fn execute_behavior_flee() {}
+pub fn execute_behavior_attack(
+    time: Res<Time>,
+    mut query: Query<(
+        &CurrentBehavior,
+        &AttackBehavior,
+        &mut AttackCooldownTimer,
+        &Transform,
+        &CurrentTeam,
+        &mut Velocity,
+    )>,
+    mut others_query: Query<(&Transform, &CurrentTeam, &mut Health)>,
+) {
+    query.iter_mut().for_each(
+        |(
+            current_behavior,
+            attack_behavior,
+            mut attack_cooldown_timer,
+            transform,
+            team,
+            mut velocity,
+        )| {
+            if let Behavior::Attack(_) = current_behavior.0 {
+                let mut enemies_within_range = others_query
+                    .iter_mut()
+                    .filter(|(other_transform, other_team, other_health)| {
+                        is_other_valid_target(
+                            team,
+                            other_health,
+                            other_team,
+                            transform,
+                            other_transform,
+                            ATTACK_DISTANCE_MAX,
+                        )
+                    })
+                    .collect::<Vec<(&Transform, &CurrentTeam, Mut<Health>)>>();
+
+                enemies_within_range.sort_by(|a, b| {
+                    let distance_to_a =
+                        transform.translation.truncate() - a.0.translation.truncate();
+                    let distance_to_b =
+                        transform.translation.truncate() - b.0.translation.truncate();
+                    distance_to_a
+                        .length()
+                        .partial_cmp(&distance_to_b.length())
+                        .unwrap()
+                });
+
+                if let Some((enemy_transform, _, enemy_health)) = enemies_within_range.first_mut() {
                     let direction =
                         enemy_transform.translation.truncate() - transform.translation.truncate();
 
@@ -331,7 +397,19 @@ pub fn execute_behavior_attack(
                     } else {
                         Vec2::ZERO
                     };
+
+                    if attack_cooldown_timer.0.tick(time.delta()).just_finished() {
+                        let final_damage = attack_behavior.damage
+                            + rand::random::<f32>() * attack_behavior.random_attack_offset;
+                        enemy_health.0 -= final_damage;
+
+                        let new_cooldown = attack_behavior.attack_cooldown
+                            + rand::random::<f32>() * attack_behavior.random_cooldown_offset;
+                        attack_cooldown_timer.0 =
+                            Timer::from_seconds(new_cooldown, TimerMode::Once);
+                    }
                 }
             }
-        });
+        },
+    );
 }

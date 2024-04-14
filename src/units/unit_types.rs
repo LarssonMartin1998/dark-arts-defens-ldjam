@@ -1,6 +1,6 @@
 use crate::ai::behavior::{
-    AttackBehavior, Behavior, BehaviorBundle, ChaseBehavior, CurrentBehavior, MoveOrigoBehavior,
-    SupportedBehaviors, WanderBehaviorBundle,
+    AttackBehaviorBundle, Behavior, BehaviorBundle, ChaseBehavior, CurrentBehavior,
+    MoveOrigoBehavior, SupportedBehaviors, WanderBehaviorBundle,
 };
 use crate::animation::{spawn_animated_children, CurrentAnimation};
 use crate::animation::{AnimatedChildSpawnParams, AnimationType};
@@ -206,7 +206,7 @@ impl UnitChildrenSpawnParamsFactory for Knight {
                 (Behavior::Wander(WanderBehaviorBundle::default()), 3),
                 (Behavior::MoveOrigo(MoveOrigoBehavior {}), 5),
                 (Behavior::Chase(ChaseBehavior {}), 10),
-                (Behavior::Attack(AttackBehavior {}), 15),
+                (Behavior::Attack(AttackBehaviorBundle::default()), 15),
             ]),
             current_behavior: CurrentBehavior(Behavior::MoveOrigo(MoveOrigoBehavior {})),
         }
@@ -314,7 +314,7 @@ pub fn spawn_unit(
                     entity.insert(*behavior);
                 }
                 (Behavior::Attack(behavior), _) => {
-                    entity.insert(*behavior);
+                    entity.insert(behavior.clone());
                 }
             };
         });
