@@ -26,9 +26,9 @@ impl Plugin for DarkArtsDefensePlugin {
             .add_systems(
                 Update,
                 (
-                    animation::animate_sprite,
-                    animation::update_animation_visibility,
                     animation::animation_state_machine,
+                    animation::update_animation_visibility,
+                    animation::animate_sprite,
                     velocity::translate,
                     acolyte::acolyte_mana_giver,
                 ),

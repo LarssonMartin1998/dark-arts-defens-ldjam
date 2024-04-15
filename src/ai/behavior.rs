@@ -7,23 +7,24 @@ use crate::{
     velocity::Velocity,
 };
 
-const ATTACK_DISTANCE_MAX: f32 = 72.0;
+const ATTACK_DISTANCE_MAX: f32 = 96.0;
+const ATTACK_DISTANCE_MID: f32 = 72.0;
 const ATTACK_DISTANCE_MIN: f32 = 48.0;
 
 #[derive(Clone, Debug)]
 pub enum Behavior {
     Idle(IdleBehavior),           // Do nothing
     MoveOrigo(MoveOrigoBehavior), // Special case for enemies with no targets in range, move towards origo instead
-    Wander(WanderBehaviorBundle), // Friendly units wander around when waiting for enemies
+    Wander(WanderBehavior),       // Friendly units wander around when waiting for enemies
     Chase(ChaseBehavior),         // Both friendly and enemy units chase their targets
     Flee(FleeBehavior),           // The acolyte tries to flee from enemies
-    Attack(AttackBehaviorBundle), // Attack when in range
+    Attack(AttackBehavior),       // Attack when in range
     Dead(DeadBehavior),           // Dead units do nothing
 }
 
 impl Default for Behavior {
     fn default() -> Self {
-        Behavior::Wander(WanderBehaviorBundle::default())
+        Behavior::Wander(WanderBehavior::default())
     }
 }
 
@@ -33,43 +34,29 @@ pub struct IdleBehavior {}
 #[derive(Component, Clone, Copy, Debug)]
 pub struct MoveOrigoBehavior {}
 
-#[derive(Bundle, Clone, Debug)]
-pub struct WanderBehaviorBundle {
-    pub wander_behavior: WanderBehavior,
-    pub wander_timer: WanderBehaviorWanderTimer,
-    pub wait_timer: WanderBehaviorWaitTimer,
-}
-
-impl Default for WanderBehaviorBundle {
-    fn default() -> Self {
-        let wander_time = 3.0;
-        let wait_time = 1.5;
-        WanderBehaviorBundle {
-            wander_behavior: WanderBehavior {
-                wait_time,
-                wander_time,
-                random_time_offset: 0.75,
-                is_wandering: false,
-            },
-            wander_timer: WanderBehaviorWanderTimer(Timer::from_seconds(
-                wander_time,
-                TimerMode::Once,
-            )),
-            wait_timer: WanderBehaviorWaitTimer(Timer::from_seconds(wait_time, TimerMode::Once)),
-        }
-    }
-}
-
 #[derive(Component, Clone, Debug)]
-pub struct WanderBehaviorWanderTimer(pub Timer);
-#[derive(Component, Clone, Debug)]
-pub struct WanderBehaviorWaitTimer(pub Timer);
-#[derive(Component, Clone, Copy, Debug)]
 pub struct WanderBehavior {
     pub wait_time: f32,
     pub wander_time: f32,
     pub random_time_offset: f32,
     pub is_wandering: bool,
+    pub wait_timer: Timer,
+    pub wander_timer: Timer,
+}
+
+impl Default for WanderBehavior {
+    fn default() -> Self {
+        let wander_time = 3.0;
+        let wait_time = 1.5;
+        WanderBehavior {
+            wait_time,
+            wander_time,
+            random_time_offset: 0.75,
+            is_wandering: false,
+            wait_timer: Timer::from_seconds(wait_time, TimerMode::Once),
+            wander_timer: Timer::from_seconds(wander_time, TimerMode::Once),
+        }
+    }
 }
 
 #[derive(Component, Clone, Copy, Debug)]
@@ -78,38 +65,28 @@ pub struct ChaseBehavior {}
 #[derive(Component, Clone, Copy, Debug)]
 pub struct FleeBehavior {}
 
-#[derive(Bundle, Clone, Debug)]
-pub struct AttackBehaviorBundle {
-    pub attack_behavior: AttackBehavior,
-    pub attack_cooldown_timer: AttackCooldownTimer,
-}
-
-impl Default for AttackBehaviorBundle {
-    fn default() -> Self {
-        let attack_cooldown = 1.5;
-        AttackBehaviorBundle {
-            attack_behavior: AttackBehavior {
-                attack_cooldown,
-                random_cooldown_offset: 0.5,
-                random_attack_offset: 5,
-                damage: 10,
-            },
-            attack_cooldown_timer: AttackCooldownTimer(Timer::from_seconds(
-                attack_cooldown,
-                TimerMode::Once,
-            )),
-        }
-    }
-}
-
-#[derive(Component, Clone, Debug)]
-pub struct AttackCooldownTimer(pub Timer);
 #[derive(Component, Clone, Debug)]
 pub struct AttackBehavior {
-    pub attack_cooldown: f32,
+    pub cooldown: f32,
     pub random_cooldown_offset: f32,
     pub random_attack_offset: u8,
     pub damage: u8,
+    pub is_attacking: bool,
+    pub timer: Timer,
+}
+
+impl Default for AttackBehavior {
+    fn default() -> Self {
+        let attack_cooldown = 4.0;
+        AttackBehavior {
+            cooldown: attack_cooldown,
+            random_cooldown_offset: 0.5,
+            random_attack_offset: 5,
+            damage: 10,
+            is_attacking: false,
+            timer: Timer::from_seconds(attack_cooldown, TimerMode::Once),
+        }
+    }
 }
 
 #[derive(Component, Clone, Debug)]
@@ -124,9 +101,9 @@ pub struct SupportedBehaviors(pub Vec<(Behavior, u8)>);
 impl Default for SupportedBehaviors {
     fn default() -> Self {
         SupportedBehaviors(vec![
-            (Behavior::Wander(WanderBehaviorBundle::default()), 5),
+            (Behavior::Wander(WanderBehavior::default()), 5),
             (Behavior::Chase(ChaseBehavior {}), 10),
-            (Behavior::Attack(AttackBehaviorBundle::default()), 15),
+            (Behavior::Attack(AttackBehavior::default()), 15),
             (Behavior::Dead(DeadBehavior {}), 20),
         ])
     }
@@ -143,7 +120,7 @@ fn get_flee_distance(window: &Window) -> f32 {
 }
 
 fn get_chase_distance(window: &Window) -> f32 {
-    window.width() * 0.5
+    window.width() * 0.4
 }
 
 fn is_other_valid_target(
@@ -190,7 +167,7 @@ pub fn behavior_state_machine(
                         (Behavior::MoveOrigo(_b), _p) => {
                             let window = window_query.single();
                             let distance_to_origo = transform.translation.truncate().length();
-                            distance_to_origo > window.height() * 0.2
+                            distance_to_origo > window.height() * 0.3
                         }
                         (Behavior::Wander(_b), _p) => true,
                         (Behavior::Chase(_b), _p) => others_query.iter().any(
@@ -270,22 +247,18 @@ pub fn execute_behavior_move_origo(
 
 pub fn execute_behavior_wander(
     time: Res<Time>,
-    mut query: Query<(
-        &CurrentBehavior,
-        &mut WanderBehavior,
-        &mut WanderBehaviorWaitTimer,
-        &mut WanderBehaviorWanderTimer,
-        &mut Velocity,
-    )>,
+    mut query: Query<(&CurrentBehavior, &mut WanderBehavior, &mut Velocity)>,
 ) {
-    for (current_behavior, mut wander_behavior, mut wait_timer, mut wander_timer, mut velocity) in
-        query.iter_mut()
-    {
+    for (current_behavior, mut wander_behavior, mut velocity) in query.iter_mut() {
         if let Behavior::Wander(_) = current_behavior.0 {
             if wander_behavior.is_wandering {
-                if wander_timer.0.tick(time.delta()).just_finished() {
+                if wander_behavior
+                    .wander_timer
+                    .tick(time.delta())
+                    .just_finished()
+                {
                     wander_behavior.is_wandering = false;
-                    wait_timer.0 = Timer::from_seconds(
+                    wander_behavior.wait_timer = Timer::from_seconds(
                         wander_behavior.wait_time
                             + rand::random::<f32>() * wander_behavior.random_time_offset,
                         TimerMode::Once,
@@ -293,9 +266,13 @@ pub fn execute_behavior_wander(
 
                     velocity.0 = Vec2::ZERO;
                 }
-            } else if wait_timer.0.tick(time.delta()).just_finished() {
+            } else if wander_behavior
+                .wait_timer
+                .tick(time.delta())
+                .just_finished()
+            {
                 wander_behavior.is_wandering = true;
-                wander_timer.0 = Timer::from_seconds(
+                wander_behavior.wander_timer = Timer::from_seconds(
                     wander_behavior.wander_time
                         + rand::random::<f32>() * wander_behavior.random_time_offset,
                     TimerMode::Once,
@@ -418,8 +395,7 @@ pub fn execute_behavior_attack(
     mut rng: ResMut<RandomSeed>,
     mut query: Query<(
         &CurrentBehavior,
-        &AttackBehavior,
-        &mut AttackCooldownTimer,
+        &mut AttackBehavior,
         &Transform,
         &CurrentTeam,
         &mut Velocity,
@@ -427,14 +403,7 @@ pub fn execute_behavior_attack(
     mut others_query: Query<(&Transform, &CurrentTeam, &mut Health)>,
 ) {
     query.iter_mut().for_each(
-        |(
-            current_behavior,
-            attack_behavior,
-            mut attack_cooldown_timer,
-            transform,
-            team,
-            mut velocity,
-        )| {
+        |(current_behavior, mut attack_behavior, transform, team, mut velocity)| {
             if let Behavior::Attack(_) = current_behavior.0 {
                 let mut enemies_within_range = others_query
                     .iter_mut()
@@ -465,13 +434,15 @@ pub fn execute_behavior_attack(
                     let direction =
                         enemy_transform.translation.truncate() - transform.translation.truncate();
 
-                    velocity.0 = if direction.length() > ATTACK_DISTANCE_MIN {
+                    velocity.0 = if direction.length() > ATTACK_DISTANCE_MID {
                         direction.normalize_or_zero()
+                    } else if direction.length() > ATTACK_DISTANCE_MIN {
+                        velocity.0
                     } else {
                         Vec2::ZERO
                     };
 
-                    if attack_cooldown_timer.0.tick(time.delta()).just_finished() {
+                    if attack_behavior.timer.tick(time.delta()).just_finished() {
                         let final_damage = std::cmp::min(
                             rng.0.gen_range(
                                 attack_behavior.damage
@@ -482,10 +453,10 @@ pub fn execute_behavior_attack(
                         );
                         enemy_health.0 -= final_damage;
 
-                        let new_cooldown = attack_behavior.attack_cooldown
+                        let new_cooldown = attack_behavior.cooldown
                             + rand::random::<f32>() * attack_behavior.random_cooldown_offset;
-                        attack_cooldown_timer.0 =
-                            Timer::from_seconds(new_cooldown, TimerMode::Once);
+                        attack_behavior.timer = Timer::from_seconds(new_cooldown, TimerMode::Once);
+                        attack_behavior.is_attacking = true;
                     }
                 }
             }

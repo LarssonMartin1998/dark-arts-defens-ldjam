@@ -1,7 +1,7 @@
-use crate::{units::health::Health, velocity::Velocity};
+use crate::{ai::behavior::AttackBehavior, units::health::Health, velocity::Velocity};
 use bevy::prelude::*;
 
-#[derive(Component, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum AnimationType {
     #[default]
     Idle,
@@ -12,19 +12,17 @@ pub enum AnimationType {
 }
 
 #[derive(Component, Clone, Default)]
-pub struct LoopAnimation(pub bool);
-
-#[derive(Component, Clone, Default)]
-pub struct AnimationIndices {
-    pub first: usize,
-    pub last: usize,
+pub struct Animation {
+    pub animation_type: AnimationType,
+    pub last_atlas_index: usize,
+    pub is_looping: bool,
+    pub frame_timer: Timer,
 }
 
-#[derive(Component, Deref, DerefMut, Default, Clone)]
-pub struct AnimationTimer(pub Timer);
-
 #[derive(Component, Debug, Clone, PartialEq, Eq, Default)]
-pub struct CurrentAnimation(pub AnimationType);
+pub struct CurrentAnimation {
+    pub animation_type: AnimationType,
+}
 
 #[derive(Bundle, Clone, Default)]
 pub struct AnimationBundle {
@@ -45,30 +43,31 @@ pub struct AnimationBundle {
     /// Algorithmically-computed indication of whether an entity is visible and should be extracted for rendering
     pub view_visibility: ViewVisibility,
 
-    pub animation_indices: AnimationIndices,
-    pub animation_timer: AnimationTimer,
-    pub animation_type: AnimationType,
-    pub loop_animation: LoopAnimation,
+    pub animation: Animation,
 }
 
 pub struct AnimatedChildSpawnParams {
     pub texture_path: String,
     pub tile_size: Vec2,
     pub grid: (usize, usize),
-    pub last_index: usize,
+    pub last_atlas_index: usize,
     pub animation_type: AnimationType,
     pub is_looping: bool,
+    pub is_locked: bool,
 }
 
-impl From<(&str, Vec2, (usize, usize), usize, AnimationType, bool)> for AnimatedChildSpawnParams {
-    fn from(item: (&str, Vec2, (usize, usize), usize, AnimationType, bool)) -> Self {
+impl From<(&str, Vec2, (usize, usize), usize, AnimationType, bool, bool)>
+    for AnimatedChildSpawnParams
+{
+    fn from(item: (&str, Vec2, (usize, usize), usize, AnimationType, bool, bool)) -> Self {
         Self {
             texture_path: item.0.to_owned(),
             tile_size: item.1,
             grid: item.2,
-            last_index: item.3,
+            last_atlas_index: item.3,
             animation_type: item.4,
             is_looping: item.5,
+            is_locked: item.6,
         }
     }
 }
@@ -89,93 +88,175 @@ pub fn spawn_animated_children(
         );
 
         let texture_atlas_layout = texture_atlas_layouts.add(layout);
-        let animation_indices = AnimationIndices {
-            first: 0,
-            last: child_param.last_index,
-        };
-
         parent.spawn(AnimationBundle {
             texture: asset_server.load(child_param.texture_path),
             atlas: TextureAtlas {
                 layout: texture_atlas_layout,
-                index: animation_indices.first,
+                index: 0,
             },
             transform: Transform::default(),
-            animation_indices,
-            animation_timer: AnimationTimer(Timer::from_seconds(0.1, TimerMode::Once)),
-            animation_type: child_param.animation_type,
-            loop_animation: LoopAnimation(child_param.is_looping),
+            animation: Animation {
+                animation_type: child_param.animation_type,
+                last_atlas_index: child_param.last_atlas_index,
+                is_looping: child_param.is_looping,
+                frame_timer: Timer::from_seconds(0.1, TimerMode::Once),
+            },
             ..Default::default()
         });
     });
 }
 
-pub fn animation_state_machine(
-    mut query: Query<(&mut CurrentAnimation, &Health, &Velocity, &Children)>,
-    mut child_query: Query<(&mut Sprite, &mut AnimationTimer)>,
-) {
-    for (mut current_animation, health, velocity, children) in query.iter_mut() {
-        let new_animation = if health.is_dead() {
-            AnimationType::Death
-        } else if velocity.0.length() > 0.0 {
-            for child in children.iter() {
-                if let Ok((mut sprite, _)) = child_query.get_mut(*child) {
-                    if velocity.0.x != 0.0 {
-                        sprite.flip_x = velocity.0.x < 0.0;
-                    }
+// Don't we just love hacky game jam code?
+fn get_animation_type(
+    health: &Health,
+    velocity: &Velocity,
+    children: &Children,
+    attack_behavior: Option<&mut AttackBehavior>,
+    child_query: &mut Query<(&mut Sprite, &mut Animation, &mut TextureAtlas)>,
+) -> AnimationType {
+    let run_attack = match attack_behavior {
+        Some(attack_behavior) => attack_behavior.is_attacking,
+        None => false,
+    };
+
+    if health.is_dead() {
+        AnimationType::Death
+    } else if run_attack {
+        AnimationType::Attack
+    } else if velocity.0.length() > 0.0 {
+        for child in children.iter() {
+            if let Ok((mut sprite, _, _)) = child_query.get_mut(*child) {
+                if velocity.0.x != 0.0 {
+                    sprite.flip_x = velocity.0.x < 0.0;
                 }
             }
+        }
 
-            AnimationType::Walk
-        } else {
-            AnimationType::Idle
-        };
+        AnimationType::Walk
+    } else {
+        AnimationType::Idle
+    }
+}
 
-        if new_animation != current_animation.0 {
-            current_animation.0 = new_animation;
-            for child in children.iter() {
-                if let Ok((_, mut animation_timer)) = child_query.get_mut(*child) {
-                    animation_timer.0.reset();
-                }
+fn update_current_animation(
+    current_animation: &mut CurrentAnimation,
+    animation_type: AnimationType,
+    children: &Children,
+    child_query: &mut Query<(&mut Sprite, &mut Animation, &mut TextureAtlas)>,
+) {
+    if current_animation.animation_type == animation_type {
+        return;
+    }
+
+    current_animation.animation_type = animation_type;
+    for child in children.iter() {
+        if let Ok((_, mut animation, mut atlas)) = child_query.get_mut(*child) {
+            if animation.animation_type == current_animation.animation_type {
+                atlas.index = 0;
+                animation.frame_timer.reset();
             }
         }
     }
 }
 
+pub fn animation_state_machine(
+    mut query: Query<
+        (&mut CurrentAnimation, &Health, &Velocity, &Children),
+        Without<AttackBehavior>,
+    >,
+    mut query_with_attack: Query<(
+        &mut CurrentAnimation,
+        &Health,
+        &Velocity,
+        &mut AttackBehavior,
+        &Children,
+    )>,
+    mut child_query: Query<(&mut Sprite, &mut Animation, &mut TextureAtlas)>,
+) {
+    for (mut current_animation, health, velocity, children) in query.iter_mut() {
+        update_current_animation(
+            &mut current_animation,
+            get_animation_type(health, velocity, children, None, &mut child_query),
+            children,
+            &mut child_query,
+        );
+    }
+    for (mut current_animation, health, velocity, mut attack_behavior, children) in
+        query_with_attack.iter_mut()
+    {
+        update_current_animation(
+            &mut current_animation,
+            get_animation_type(
+                health,
+                velocity,
+                children,
+                Some(&mut attack_behavior),
+                &mut child_query,
+            ),
+            children,
+            &mut child_query,
+        );
+    }
+}
+
 pub fn animate_sprite(
     time: Res<Time>,
-    mut query: Query<(
-        &LoopAnimation,
-        &AnimationIndices,
-        &mut AnimationTimer,
-        &mut TextureAtlas,
-    )>,
+    mut query_with: Query<(&CurrentAnimation, &Children, &mut AttackBehavior)>,
+    query_without: Query<(&CurrentAnimation, &Children), Without<AttackBehavior>>,
+    mut child_query: Query<(&mut Animation, &mut TextureAtlas)>,
 ) {
-    for (loop_animation, indices, mut timer, mut atlas) in &mut query {
-        if timer.tick(time.delta()).just_finished() {
-            atlas.index = if atlas.index == indices.last {
-                if loop_animation.0 {
-                    timer.reset();
-                    indices.first
-                } else {
-                    indices.last
+    let combined_children: Vec<(&CurrentAnimation, &Children, Option<Mut<AttackBehavior>>)> =
+        query_with
+            .iter_mut()
+            .map(|(current_anim, children, attack_behavior)| {
+                (current_anim, children, Some(attack_behavior))
+            }) // Retain Mut<AttackBehavior>
+            .chain(
+                query_without
+                    .iter()
+                    .map(|(current_anim, children)| (current_anim, children, None)),
+            ) // Append children without AttackBehavior
+            .collect();
+
+    for (current_anim, children, mut attack_behavior) in combined_children {
+        for child in children.iter() {
+            if let Ok((mut animation, mut atlas)) = child_query.get_mut(*child) {
+                if current_anim.animation_type != animation.animation_type {
+                    continue;
                 }
-            } else {
-                timer.reset();
-                atlas.index + 1
-            };
+
+                if animation.frame_timer.tick(time.delta()).just_finished() {
+                    atlas.index = if atlas.index == animation.last_atlas_index {
+                        if let Some(ref mut attack_behavior) = attack_behavior {
+                            if attack_behavior.is_attacking {
+                                attack_behavior.is_attacking = false;
+                            }
+                        }
+
+                        if animation.is_looping {
+                            animation.frame_timer.reset();
+                            0
+                        } else {
+                            animation.last_atlas_index
+                        }
+                    } else {
+                        animation.frame_timer.reset();
+                        atlas.index + 1
+                    };
+                }
+            }
         }
     }
 }
 
 pub fn update_animation_visibility(
     query: Query<(&Children, &CurrentAnimation)>,
-    mut animation_query: Query<(Entity, &mut Visibility, &AnimationType)>,
+    mut animation_query: Query<(Entity, &mut Visibility, &Animation)>,
 ) {
     for (children, current_animation) in query.iter() {
         for &child in children.iter() {
-            if let Ok((_, mut visibility, animation_type)) = animation_query.get_mut(child) {
-                *visibility = if current_animation.0 == *animation_type {
+            if let Ok((_, mut visibility, animation)) = animation_query.get_mut(child) {
+                *visibility = if current_animation.animation_type == animation.animation_type {
                     Visibility::Visible
                 } else {
                     Visibility::Hidden

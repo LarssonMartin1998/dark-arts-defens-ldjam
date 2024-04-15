@@ -36,6 +36,7 @@ pub fn system(
                     49,
                     AnimationType::Idle,
                     true,
+                    false,
                 ),
                 (
                     "player/player_walk.png",
@@ -44,6 +45,7 @@ pub fn system(
                     9,
                     AnimationType::Walk,
                     true,
+                    false,
                 ),
                 (
                     "player/player_hit.png",
@@ -52,6 +54,7 @@ pub fn system(
                     8,
                     AnimationType::Hit,
                     false,
+                    true,
                 ),
                 (
                     "player/player_death.png",
@@ -59,6 +62,7 @@ pub fn system(
                     (52, 1),
                     51,
                     AnimationType::Death,
+                    false,
                     false,
                 ),
             ]
