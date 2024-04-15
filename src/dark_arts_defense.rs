@@ -7,12 +7,17 @@ use crate::player;
 use crate::ui;
 use crate::units::acolyte;
 use crate::velocity;
+use rand::{rngs::StdRng, SeedableRng};
+
+#[derive(Resource)]
+pub struct RandomSeed(pub StdRng);
 
 pub struct DarkArtsDefensePlugin;
 
 impl Plugin for DarkArtsDefensePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((
+        app.insert_resource(RandomSeed(StdRng::seed_from_u64(12345123454321_u64)))
+            .add_plugins((
             player::plugin::PlayerPlugin,
             enemies::plugin::EnemyPlugin,
             ai::plugin::AiPlugin,

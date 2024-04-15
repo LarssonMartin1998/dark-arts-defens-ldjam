@@ -73,7 +73,6 @@ pub fn system(
         };
 
         mana.current_mana -= unit_cost;
-        println!("Mana: {}", mana.current_mana);
     });
 }
 

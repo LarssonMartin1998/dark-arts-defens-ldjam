@@ -1,6 +1,8 @@
 use bevy::prelude::*;
+use rand::Rng;
 
 use crate::{
+    dark_arts_defense::RandomSeed,
     units::{health::Health, team::CurrentTeam},
     velocity::Velocity,
 };
@@ -88,8 +90,8 @@ impl Default for AttackBehaviorBundle {
             attack_behavior: AttackBehavior {
                 attack_cooldown,
                 random_cooldown_offset: 0.5,
-                random_attack_offset: 5.0,
-                damage: 10.0,
+                random_attack_offset: 5,
+                damage: 10,
             },
             attack_cooldown_timer: AttackCooldownTimer(Timer::from_seconds(
                 attack_cooldown,
@@ -105,8 +107,8 @@ pub struct AttackCooldownTimer(pub Timer);
 pub struct AttackBehavior {
     pub attack_cooldown: f32,
     pub random_cooldown_offset: f32,
-    pub random_attack_offset: f32,
-    pub damage: f32,
+    pub random_attack_offset: u8,
+    pub damage: u8,
 }
 
 #[derive(Component, Default, Clone)]
@@ -343,6 +345,7 @@ pub fn execute_behavior_chase(
 pub fn execute_behavior_flee() {}
 pub fn execute_behavior_attack(
     time: Res<Time>,
+    mut rng: ResMut<RandomSeed>,
     mut query: Query<(
         &CurrentBehavior,
         &AttackBehavior,
@@ -399,8 +402,9 @@ pub fn execute_behavior_attack(
                     };
 
                     if attack_cooldown_timer.0.tick(time.delta()).just_finished() {
-                        let final_damage = attack_behavior.damage
-                            + rand::random::<f32>() * attack_behavior.random_attack_offset;
+                        let final_damage = std::cmp::min(
+                            rng.0.gen_range(attack_behavior.damage ..= attack_behavior.damage + attack_behavior.random_attack_offset),
+                            enemy_health.0);
                         enemy_health.0 -= final_damage;
 
                         let new_cooldown = attack_behavior.attack_cooldown
