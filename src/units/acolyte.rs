@@ -18,7 +18,6 @@ pub fn acolyte_mana_giver(
         if acolyte.give_mana_timer.tick(time.delta()).just_finished() {
             let mut mana = player_query.single_mut();
             mana.current_mana = (mana.current_mana + acolyte.mana_amount).min(mana.max_mana);
-            println!("Player now has {} mana", mana.current_mana);
         }
     }
 }
