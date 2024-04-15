@@ -35,6 +35,7 @@ pub fn system(
                     (50, 1),
                     49,
                     AnimationType::Idle,
+                    true,
                 ),
                 (
                     "player/player_walk.png",
@@ -42,6 +43,7 @@ pub fn system(
                     (10, 1),
                     9,
                     AnimationType::Walk,
+                    true,
                 ),
                 (
                     "player/player_hit.png",
@@ -49,6 +51,7 @@ pub fn system(
                     (9, 1),
                     8,
                     AnimationType::Hit,
+                    false,
                 ),
                 (
                     "player/player_death.png",
@@ -56,6 +59,7 @@ pub fn system(
                     (52, 1),
                     51,
                     AnimationType::Death,
+                    false,
                 ),
             ]
             .into_iter()

@@ -1,4 +1,4 @@
-use crate::velocity::Velocity;
+use crate::{units::health::Health, velocity::Velocity};
 use bevy::prelude::*;
 
 #[derive(Component, Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -10,6 +10,9 @@ pub enum AnimationType {
     Death,
     Attack,
 }
+
+#[derive(Component, Clone, Default)]
+pub struct LoopAnimation(pub bool);
 
 #[derive(Component, Clone, Default)]
 pub struct AnimationIndices {
@@ -45,6 +48,7 @@ pub struct AnimationBundle {
     pub animation_indices: AnimationIndices,
     pub animation_timer: AnimationTimer,
     pub animation_type: AnimationType,
+    pub loop_animation: LoopAnimation,
 }
 
 pub struct AnimatedChildSpawnParams {
@@ -53,16 +57,18 @@ pub struct AnimatedChildSpawnParams {
     pub grid: (usize, usize),
     pub last_index: usize,
     pub animation_type: AnimationType,
+    pub is_looping: bool,
 }
 
-impl From<(&str, Vec2, (usize, usize), usize, AnimationType)> for AnimatedChildSpawnParams {
-    fn from(item: (&str, Vec2, (usize, usize), usize, AnimationType)) -> Self {
+impl From<(&str, Vec2, (usize, usize), usize, AnimationType, bool)> for AnimatedChildSpawnParams {
+    fn from(item: (&str, Vec2, (usize, usize), usize, AnimationType, bool)) -> Self {
         Self {
             texture_path: item.0.to_owned(),
             tile_size: item.1,
             grid: item.2,
             last_index: item.3,
             animation_type: item.4,
+            is_looping: item.5,
         }
     }
 }
@@ -96,35 +102,68 @@ pub fn spawn_animated_children(
             },
             transform: Transform::default(),
             animation_indices,
-            animation_timer: AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+            animation_timer: AnimationTimer(Timer::from_seconds(0.1, TimerMode::Once)),
             animation_type: child_param.animation_type,
+            loop_animation: LoopAnimation(child_param.is_looping),
             ..Default::default()
         });
     });
 }
 
-pub fn animate_sprite(
-    time: Res<Time>,
-    mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut TextureAtlas)>,
+pub fn animation_state_machine(
+    mut query: Query<(&mut CurrentAnimation, &Health, &Velocity, &Children)>,
+    mut child_query: Query<(&mut Sprite, &mut AnimationTimer)>,
 ) {
-    for (indices, mut timer, mut atlas) in &mut query {
-        timer.tick(time.delta());
-        if timer.just_finished() {
-            atlas.index = if atlas.index == indices.last {
-                indices.first
-            } else {
-                atlas.index + 1
-            };
+    for (mut current_animation, health, velocity, children) in query.iter_mut() {
+        let new_animation = if health.is_dead() {
+            AnimationType::Death
+        } else if velocity.0.length() > 0.0 {
+            for child in children.iter() {
+                if let Ok((mut sprite, _)) = child_query.get_mut(*child) {
+                    if velocity.0.x != 0.0 {
+                        sprite.flip_x = velocity.0.x < 0.0;
+                    }
+                }
+            }
+
+            AnimationType::Walk
+        } else {
+            AnimationType::Idle
+        };
+
+        if new_animation != current_animation.0 {
+            current_animation.0 = new_animation;
+            for child in children.iter() {
+                if let Ok((_, mut animation_timer)) = child_query.get_mut(*child) {
+                    animation_timer.0.reset();
+                }
+            }
         }
     }
 }
 
-pub fn handle_anim_state(mut query: Query<(&mut CurrentAnimation, &Velocity)>) {
-    for (mut current_animation, velocity) in query.iter_mut() {
-        if velocity.0.length() > 0.0 {
-            *current_animation = CurrentAnimation(AnimationType::Walk);
-        } else {
-            *current_animation = CurrentAnimation(AnimationType::Idle);
+pub fn animate_sprite(
+    time: Res<Time>,
+    mut query: Query<(
+        &LoopAnimation,
+        &AnimationIndices,
+        &mut AnimationTimer,
+        &mut TextureAtlas,
+    )>,
+) {
+    for (loop_animation, indices, mut timer, mut atlas) in &mut query {
+        if timer.tick(time.delta()).just_finished() {
+            atlas.index = if atlas.index == indices.last {
+                if loop_animation.0 {
+                    timer.reset();
+                    indices.first
+                } else {
+                    indices.last
+                }
+            } else {
+                timer.reset();
+                atlas.index + 1
+            };
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::ai::behavior::{
-    AttackBehaviorBundle, Behavior, BehaviorBundle, ChaseBehavior, CurrentBehavior, FleeBehavior,
-    IdleBehavior, MoveOrigoBehavior, SupportedBehaviors, WanderBehaviorBundle,
+    AttackBehaviorBundle, Behavior, BehaviorBundle, ChaseBehavior, CurrentBehavior, DeadBehavior,
+    FleeBehavior, IdleBehavior, MoveOrigoBehavior, SupportedBehaviors, WanderBehaviorBundle,
 };
 use crate::animation::{spawn_animated_children, CurrentAnimation};
 use crate::animation::{AnimatedChildSpawnParams, AnimationType};
@@ -72,6 +72,7 @@ impl UnitChildrenSpawnParamsFactory for Acolyte {
             supported_behaviors: SupportedBehaviors(vec![
                 (Behavior::Idle(IdleBehavior {}), 5),
                 (Behavior::Flee(FleeBehavior {}), 10),
+                (Behavior::Dead(DeadBehavior {}), 15),
             ]),
         }
     }
@@ -84,6 +85,7 @@ impl UnitChildrenSpawnParamsFactory for Acolyte {
                 (3, 4),
                 9,
                 AnimationType::Idle,
+                true,
             ),
             (
                 "acolyte/acolyte_idle.png",
@@ -91,6 +93,7 @@ impl UnitChildrenSpawnParamsFactory for Acolyte {
                 (3, 4),
                 9,
                 AnimationType::Walk,
+                true,
             ),
             (
                 "acolyte/acolyte_death.png",
@@ -98,6 +101,7 @@ impl UnitChildrenSpawnParamsFactory for Acolyte {
                 (3, 4),
                 9,
                 AnimationType::Death,
+                false,
             ),
         ]
         .into_iter()
@@ -129,6 +133,7 @@ impl UnitChildrenSpawnParamsFactory for Warrior {
                 (21, 1),
                 20,
                 AnimationType::Idle,
+                true,
             ),
             (
                 "warrior/warrior_walk.png",
@@ -136,6 +141,7 @@ impl UnitChildrenSpawnParamsFactory for Warrior {
                 (11, 1),
                 10,
                 AnimationType::Walk,
+                true,
             ),
             (
                 "warrior/warrior_hit.png",
@@ -143,6 +149,7 @@ impl UnitChildrenSpawnParamsFactory for Warrior {
                 (9, 1),
                 8,
                 AnimationType::Hit,
+                false,
             ),
             (
                 "warrior/warrior_death.png",
@@ -150,6 +157,7 @@ impl UnitChildrenSpawnParamsFactory for Warrior {
                 (36, 1),
                 35,
                 AnimationType::Death,
+                false,
             ),
         ]
         .into_iter()
@@ -181,6 +189,7 @@ impl UnitChildrenSpawnParamsFactory for Cat {
                 (10, 1),
                 9,
                 AnimationType::Idle,
+                true,
             ),
             (
                 "cat/cat_walk.png",
@@ -188,6 +197,7 @@ impl UnitChildrenSpawnParamsFactory for Cat {
                 (8, 1),
                 7,
                 AnimationType::Walk,
+                true,
             ),
             (
                 "cat/cat_hit.png",
@@ -195,6 +205,7 @@ impl UnitChildrenSpawnParamsFactory for Cat {
                 (9, 1),
                 8,
                 AnimationType::Hit,
+                false,
             ),
             (
                 "cat/cat_death.png",
@@ -202,6 +213,7 @@ impl UnitChildrenSpawnParamsFactory for Cat {
                 (18, 1),
                 17,
                 AnimationType::Death,
+                false,
             ),
         ]
         .into_iter()
@@ -228,6 +240,7 @@ impl UnitChildrenSpawnParamsFactory for Knight {
                 (Behavior::MoveOrigo(MoveOrigoBehavior {}), 5),
                 (Behavior::Chase(ChaseBehavior {}), 10),
                 (Behavior::Attack(AttackBehaviorBundle::default()), 15),
+                (Behavior::Dead(DeadBehavior {}), 20),
             ]),
             current_behavior: CurrentBehavior(Behavior::MoveOrigo(MoveOrigoBehavior {})),
         }
@@ -241,6 +254,7 @@ impl UnitChildrenSpawnParamsFactory for Knight {
                 (12, 1),
                 11,
                 AnimationType::Idle,
+                true,
             ),
             (
                 "enemy/enemy_move.png",
@@ -248,6 +262,7 @@ impl UnitChildrenSpawnParamsFactory for Knight {
                 (8, 1),
                 7,
                 AnimationType::Walk,
+                true,
             ),
             (
                 "enemy/enemy_death.png",
@@ -255,6 +270,7 @@ impl UnitChildrenSpawnParamsFactory for Knight {
                 (15, 1),
                 14,
                 AnimationType::Death,
+                false,
             ),
             (
                 "enemy/enemy_attack.png",
@@ -262,6 +278,7 @@ impl UnitChildrenSpawnParamsFactory for Knight {
                 (22, 1),
                 21,
                 AnimationType::Attack,
+                false,
             ),
         ]
         .into_iter()
@@ -335,6 +352,9 @@ pub fn spawn_unit<'a>(
                     entity.insert(*behavior);
                 }
                 (Behavior::Attack(behavior), _) => {
+                    entity.insert(behavior.clone());
+                }
+                (Behavior::Dead(behavior), _) => {
                     entity.insert(behavior.clone());
                 }
             };

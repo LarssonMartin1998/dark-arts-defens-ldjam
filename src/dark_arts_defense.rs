@@ -18,21 +18,20 @@ impl Plugin for DarkArtsDefensePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(RandomSeed(StdRng::seed_from_u64(12345123454321_u64)))
             .add_plugins((
-            player::plugin::PlayerPlugin,
-            enemies::plugin::EnemyPlugin,
-            ai::plugin::AiPlugin,
-            ui::plugin::UiPlugin,
-        ))
-        .add_systems(
-            Update,
-            (
-                animation::animate_sprite,
-                animation::update_animation_visibility,
-                animation::handle_anim_state,
-                velocity::translate,
-                velocity::change_sprite_direction,
-                acolyte::acolyte_mana_giver,
-            ),
-        );
+                player::plugin::PlayerPlugin,
+                enemies::plugin::EnemyPlugin,
+                ai::plugin::AiPlugin,
+                ui::plugin::UiPlugin,
+            ))
+            .add_systems(
+                Update,
+                (
+                    animation::animate_sprite,
+                    animation::update_animation_visibility,
+                    animation::animation_state_machine,
+                    velocity::translate,
+                    acolyte::acolyte_mana_giver,
+                ),
+            );
     }
 }

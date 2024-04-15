@@ -16,6 +16,7 @@ impl Plugin for AiPlugin {
                 behavior::execute_behavior_chase,
                 behavior::execute_behavior_flee,
                 behavior::execute_behavior_attack,
+                behavior::execute_behavior_dead,
             ),
         );
     }

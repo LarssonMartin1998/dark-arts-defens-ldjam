@@ -18,6 +18,7 @@ pub enum Behavior {
     Chase(ChaseBehavior),         // Both friendly and enemy units chase their targets
     Flee(FleeBehavior),           // The acolyte tries to flee from enemies
     Attack(AttackBehaviorBundle), // Attack when in range
+    Dead(DeadBehavior),           // Dead units do nothing
 }
 
 impl Default for Behavior {
@@ -111,6 +112,9 @@ pub struct AttackBehavior {
     pub damage: u8,
 }
 
+#[derive(Component, Clone, Debug)]
+pub struct DeadBehavior;
+
 #[derive(Component, Default, Clone)]
 pub struct CurrentBehavior(pub Behavior);
 
@@ -123,6 +127,7 @@ impl Default for SupportedBehaviors {
             (Behavior::Wander(WanderBehaviorBundle::default()), 5),
             (Behavior::Chase(ChaseBehavior {}), 10),
             (Behavior::Attack(AttackBehaviorBundle::default()), 15),
+            (Behavior::Dead(DeadBehavior {}), 20),
         ])
     }
 }
@@ -133,13 +138,17 @@ pub struct BehaviorBundle {
     pub supported_behaviors: SupportedBehaviors,
 }
 
+fn get_flee_distance(window: &Window) -> f32 {
+    window.width() * 0.15
+}
+
 fn get_chase_distance(window: &Window) -> f32 {
     window.width() * 0.5
 }
 
 fn is_other_valid_target(
     team: &CurrentTeam,
-    health: &Health,
+    other_health: &Health,
     other_team: &CurrentTeam,
     transform: &Transform,
     other_transform: &Transform,
@@ -149,7 +158,7 @@ fn is_other_valid_target(
         return false;
     }
 
-    if health.is_dead() {
+    if other_health.is_dead() {
         return false;
     }
 
@@ -164,11 +173,12 @@ pub fn behavior_state_machine(
         &SupportedBehaviors,
         &Transform,
         &CurrentTeam,
+        &Health,
     )>,
     others_query: Query<(&Transform, &CurrentTeam, &Health)>,
     window_query: Query<&Window>,
 ) {
-    for (mut current_behavior, supported_behaviors, transform, team) in query.iter_mut() {
+    for (mut current_behavior, supported_behaviors, transform, team, health) in query.iter_mut() {
         let window = &window_query.single();
         let mut behaviors_that_want_to_be_active = supported_behaviors
             .0
@@ -195,7 +205,18 @@ pub fn behavior_state_machine(
                                 )
                             },
                         ),
-                        (Behavior::Flee(_b), _p) => false,
+                        (Behavior::Flee(_b), _p) => others_query.iter().any(
+                            |(other_transform, other_team, other_health)| {
+                                is_other_valid_target(
+                                    team,
+                                    other_health,
+                                    other_team,
+                                    transform,
+                                    other_transform,
+                                    get_flee_distance(window),
+                                )
+                            },
+                        ),
                         (Behavior::Attack(_b), _p) => others_query.iter().any(
                             |(other_transform, other_team, other_health)| {
                                 is_other_valid_target(
@@ -208,6 +229,7 @@ pub fn behavior_state_machine(
                                 )
                             },
                         ),
+                        (Behavior::Dead(_b), _p) => health.is_dead(),
                     };
 
                 behavior_wants_to_be_active
@@ -342,7 +364,55 @@ pub fn execute_behavior_chase(
         });
 }
 
-pub fn execute_behavior_flee() {}
+pub fn execute_behavior_flee(
+    window_query: Query<&Window>,
+    mut query: Query<(
+        &CurrentBehavior,
+        &FleeBehavior,
+        &Transform,
+        &CurrentTeam,
+        &mut Velocity,
+    )>,
+    others_query: Query<(&Transform, &CurrentTeam, &Health)>,
+) {
+    let window = window_query.single();
+    query
+        .iter_mut()
+        .for_each(|(current_behavior, _, transform, team, mut velocity)| {
+            if let Behavior::Flee(_) = current_behavior.0 {
+                let enemies_within_range = others_query
+                    .iter()
+                    .filter(|(other_transform, other_team, other_health)| {
+                        is_other_valid_target(
+                            team,
+                            other_health,
+                            other_team,
+                            transform,
+                            other_transform,
+                            get_flee_distance(window),
+                        )
+                    })
+                    .collect::<Vec<(&Transform, &CurrentTeam, &Health)>>();
+
+                let center_of_mass = enemies_within_range.iter().fold(
+                    (Vec2::ZERO, 0.0),
+                    |mut acc, (other_transform, _, _)| {
+                        let distance_to_other = (transform.translation.truncate()
+                            - other_transform.translation.truncate())
+                        .length();
+                        let weight = 1.0 / distance_to_other;
+                        acc.0 += other_transform.translation.truncate() * weight;
+                        acc.1 += weight;
+                        acc
+                    },
+                );
+
+                let flee_from = center_of_mass.0 / center_of_mass.1;
+                velocity.0 = (transform.translation.truncate() - flee_from).normalize_or_zero();
+            };
+        });
+}
+
 pub fn execute_behavior_attack(
     time: Res<Time>,
     mut rng: ResMut<RandomSeed>,
@@ -403,8 +473,13 @@ pub fn execute_behavior_attack(
 
                     if attack_cooldown_timer.0.tick(time.delta()).just_finished() {
                         let final_damage = std::cmp::min(
-                            rng.0.gen_range(attack_behavior.damage ..= attack_behavior.damage + attack_behavior.random_attack_offset),
-                            enemy_health.0);
+                            rng.0.gen_range(
+                                attack_behavior.damage
+                                    ..=attack_behavior.damage
+                                        + attack_behavior.random_attack_offset,
+                            ),
+                            enemy_health.0,
+                        );
                         enemy_health.0 -= final_damage;
 
                         let new_cooldown = attack_behavior.attack_cooldown
@@ -416,4 +491,12 @@ pub fn execute_behavior_attack(
             }
         },
     );
+}
+
+pub fn execute_behavior_dead(mut query: Query<(&CurrentBehavior, &DeadBehavior, &mut Velocity)>) {
+    for (current_behavior, _, mut velocity) in query.iter_mut() {
+        if let Behavior::Dead(_) = current_behavior.0 {
+            velocity.0 = Vec2::ZERO;
+        }
+    }
 }
