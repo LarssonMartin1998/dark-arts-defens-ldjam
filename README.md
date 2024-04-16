@@ -1,4 +1,4 @@
-# Ludum Dare 55 [entry](https://ldjam.com/events/ludum-dare/55/dark-arts-defense (Linux, and Windows binaries available))
+# Ludum Dare 55 [entry (Linux, and Windows binaries available)](https://ldjam.com/events/ludum-dare/55/dark-arts-defense)
 
 Please judge this for what it is, my first time using Bevy, and the first "real" time using Rust outside of examples and exercises. The code base is filled with shortcuts, and workarounds, and every commit comes with new learnings about Bevy and Rust, and the final few commits were minutes before deadline...
 
