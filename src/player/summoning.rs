@@ -16,19 +16,19 @@ pub fn system(
     unit_configs: Res<UnitResource>,
     mut query: Query<(&mut Mana, &Transform), With<Player>>,
 ) {
-    let column_staggered_colemak_binds = vec![
-        (KeyCode::KeyN, UnitType::Acolyte),
-        (KeyCode::KeyE, UnitType::Warrior),
-        (KeyCode::KeyI, UnitType::Cat),
-    ];
-    let pressed_units = handle_input(&keys, &column_staggered_colemak_binds);
-
-    // let row_staggered_qwerty_binds = vec![
-    //     (KeyCode::Digit1, UnitType::Acolyte),
-    //     (KeyCode::Digit2, UnitType::Warrior),
-    //     (KeyCode::Digit3, UnitType::Cat),
+    // let column_staggered_colemak_binds = vec![
+    //     (KeyCode::KeyN, UnitType::Acolyte),
+    //     (KeyCode::KeyE, UnitType::Warrior),
+    //     (KeyCode::KeyI, UnitType::Cat),
     // ];
-    // let pressed_units = handle_input(&keys, &row_staggered_qwerty_binds);
+    // let pressed_units = handle_input(&keys, &column_staggered_colemak_binds);
+
+    let row_staggered_qwerty_binds = vec![
+        (KeyCode::Digit1, UnitType::Acolyte),
+        (KeyCode::Digit2, UnitType::Warrior),
+        (KeyCode::Digit3, UnitType::Cat),
+    ];
+    let pressed_units = handle_input(&keys, &row_staggered_qwerty_binds);
 
     pressed_units.into_iter().for_each(|(_, unit)| {
         let (mut mana, transform) = query.single_mut();

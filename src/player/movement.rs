@@ -10,11 +10,11 @@ pub fn system(
     query: Query<(&mut Velocity, &Transform), With<Player>>,
     window_query: Query<&Window>,
 ) {
-    let column_staggered_colemak_binds =
-        [KeyCode::KeyF, KeyCode::KeyR, KeyCode::KeyS, KeyCode::KeyT];
-    // let row_staggered_qwerty_binds = [KeyCode::KeyW, KeyCode::KeyA, KeyCode::KeyS, KeyCode::KeyD];
-    // let move_input = construct_input_vector(&keys, row_staggered_qwerty_binds);
-    let move_input = construct_input_vector(keys, column_staggered_colemak_binds);
+    // let column_staggered_colemak_binds =
+    //     [KeyCode::KeyF, KeyCode::KeyR, KeyCode::KeyS, KeyCode::KeyT];
+    // let move_input = construct_input_vector(keys, column_staggered_colemak_binds);
+    let row_staggered_qwerty_binds = [KeyCode::KeyW, KeyCode::KeyA, KeyCode::KeyS, KeyCode::KeyD];
+    let move_input = construct_input_vector(keys, row_staggered_qwerty_binds);
     handle_movement(query, window_query, move_input);
 }
 
