@@ -1,5 +1,5 @@
 use crate::mana::Mana;
-use crate::player::spawn::Player;
+use crate::player::plugin::Player;
 use crate::units::team::Team;
 use crate::units::unit_types::{
     spawn_unit, Acolyte, Cat, Knight, UnitChildrenSpawnParamsFactory, UnitResource, UnitType,

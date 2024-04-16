@@ -2,8 +2,11 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::{
-    dark_arts_defense::RandomSeed,
-    units::{health::Health, team::CurrentTeam},
+    dark_arts_defense::{GameEvent, RandomSeed},
+    units::{
+        health::Health,
+        team::{CurrentTeam, Team},
+    },
     velocity::Velocity,
 };
 
@@ -401,6 +404,7 @@ pub fn execute_behavior_attack(
         &mut Velocity,
     )>,
     mut others_query: Query<(&Transform, &CurrentTeam, &mut Health)>,
+    mut event_writer: EventWriter<GameEvent>,
 ) {
     query.iter_mut().for_each(
         |(current_behavior, mut attack_behavior, transform, team, mut velocity)| {
@@ -430,7 +434,9 @@ pub fn execute_behavior_attack(
                         .unwrap()
                 });
 
-                if let Some((enemy_transform, _, enemy_health)) = enemies_within_range.first_mut() {
+                if let Some((enemy_transform, enemy_team, enemy_health)) =
+                    enemies_within_range.first_mut()
+                {
                     let direction =
                         enemy_transform.translation.truncate() - transform.translation.truncate();
 
@@ -452,6 +458,9 @@ pub fn execute_behavior_attack(
                             enemy_health.0,
                         );
                         enemy_health.0 -= final_damage;
+                        if enemy_health.is_dead() && enemy_team.0 == Team::Good {
+                            event_writer.send(GameEvent::IncreaseScore);
+                        }
 
                         let new_cooldown = attack_behavior.cooldown
                             + rand::random::<f32>() * attack_behavior.random_cooldown_offset;

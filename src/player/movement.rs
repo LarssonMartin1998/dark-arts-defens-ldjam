@@ -1,6 +1,7 @@
-use crate::player::spawn::Player;
 use crate::velocity::Velocity;
 use bevy::prelude::*;
+
+use super::plugin::Player;
 
 const WINDOW_BOUNDS_OFFSET: f32 = 96.0;
 
@@ -46,18 +47,20 @@ fn handle_movement(
         window.width() - WINDOW_BOUNDS_OFFSET,
         window.height() - WINDOW_BOUNDS_OFFSET,
     ) * 0.5;
-    let (mut velocity, transform) = query.single_mut();
-    velocity.0 = move_input;
 
-    if (transform.translation.x >= window_bounds.x && velocity.0.x > 0.0)
-        || (transform.translation.x <= -window_bounds.x && velocity.0.x < 0.0)
-    {
-        velocity.0.x = 0.0;
-    }
+    for (mut velocity, transform) in query.iter_mut() {
+        velocity.0 = move_input;
 
-    if (transform.translation.y >= window_bounds.y && velocity.0.y > 0.0)
-        || (transform.translation.y <= -window_bounds.y && velocity.0.y < 0.0)
-    {
-        velocity.0.y = 0.0;
+        if (transform.translation.x >= window_bounds.x && velocity.0.x > 0.0)
+            || (transform.translation.x <= -window_bounds.x && velocity.0.x < 0.0)
+        {
+            velocity.0.x = 0.0;
+        }
+
+        if (transform.translation.y >= window_bounds.y && velocity.0.y > 0.0)
+            || (transform.translation.y <= -window_bounds.y && velocity.0.y < 0.0)
+        {
+            velocity.0.y = 0.0;
+        }
     }
 }

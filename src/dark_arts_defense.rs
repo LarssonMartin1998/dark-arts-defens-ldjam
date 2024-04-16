@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use crate::ai;
 use crate::animation;
 use crate::enemies;
+use crate::gamestate;
 use crate::player;
 use crate::ui;
 use crate::units::acolyte;
@@ -11,6 +12,13 @@ use rand::{rngs::StdRng, SeedableRng};
 
 #[derive(Resource)]
 pub struct RandomSeed(pub StdRng);
+
+#[derive(Event)]
+pub enum GameEvent {
+    StartGame,
+    GameOver,
+    IncreaseScore,
+}
 
 pub struct DarkArtsDefensePlugin;
 
@@ -23,9 +31,14 @@ impl Plugin for DarkArtsDefensePlugin {
                 ai::plugin::AiPlugin,
                 ui::plugin::UiPlugin,
             ))
+            .add_event::<GameEvent>()
+            .add_systems(Startup, gamestate::init_game_system)
             .add_systems(
                 Update,
                 (
+                    gamestate::start_game_system,
+                    gamestate::game_over_system,
+                    gamestate::update_score_system,
                     animation::animation_state_machine,
                     animation::update_animation_visibility,
                     animation::animate_sprite,

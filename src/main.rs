@@ -27,7 +27,9 @@ pub mod ui {
     pub mod health_text;
     pub mod mana_text;
     pub mod plugin;
+    pub mod score_text;
 }
+pub mod gamestate;
 
 use bevy::prelude::*;
 use bevy::window::{EnabledButtons, WindowMode, WindowResolution};

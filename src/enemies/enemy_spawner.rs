@@ -26,6 +26,9 @@ impl EnemyDirection {
 
 const ENEMY_SPAWN_OFFSET: f32 = 256.0;
 
+#[derive(Component)]
+pub struct EnemySpawner;
+
 pub fn spawn_enemies(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -33,7 +36,12 @@ pub fn spawn_enemies(
     time: Res<Time>,
     mut timer: ResMut<SpawnTimer>,
     window_query: Query<&Window>,
+    enemy_spawner_query: Query<&EnemySpawner>,
 ) {
+    if enemy_spawner_query.iter().count() == 0 {
+        return;
+    }
+
     if !timer.0.tick(time.delta()).just_finished() {
         return;
     }

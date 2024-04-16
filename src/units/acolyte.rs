@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
-use crate::{mana::Mana, player::spawn::Player};
+use crate::mana::Mana;
+use crate::player::plugin::Player;
 use crate::units::health::Health;
 
 use super::unit_types::Acolyte;

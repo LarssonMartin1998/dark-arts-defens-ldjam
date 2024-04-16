@@ -4,6 +4,7 @@ use crate::ai::behavior::{
 };
 use crate::animation::{spawn_animated_children, CurrentAnimation};
 use crate::animation::{AnimatedChildSpawnParams, AnimationType};
+use crate::gamestate::Cleanup;
 use crate::movement::Movement;
 use crate::units::{health::Health, team::CurrentTeam};
 use crate::velocity::Velocity;
@@ -32,6 +33,7 @@ pub struct UnitBundle {
     pub inherited_visibility: InheritedVisibility,
     pub health: Health,
     pub team: CurrentTeam,
+    pub cleanup: Cleanup,
 }
 
 // Create a trait that will be used to define the components of the units
@@ -52,7 +54,7 @@ impl Default for Acolyte {
         let mana_cooldown = 1.0;
         Self {
             give_mana_timer: Timer::from_seconds(mana_cooldown, TimerMode::Repeating),
-            mana_amount: 3,
+            mana_amount: 5,
         }
     }
 }
@@ -61,6 +63,7 @@ impl UnitChildrenSpawnParamsFactory for Acolyte {
     fn create_unit_bundle(&self) -> UnitBundle {
         UnitBundle {
             movement: Movement { speed: 75.0 },
+            health: Health(50),
             transform: Transform::from_scale(Vec3::splat(0.8)),
             ..default()
         }
@@ -119,6 +122,7 @@ impl UnitChildrenSpawnParamsFactory for Warrior {
     fn create_unit_bundle(&self) -> UnitBundle {
         UnitBundle {
             movement: Movement { speed: 200.0 },
+            health: Health(255),
             transform: Transform::from_scale(Vec3::splat(1.8)),
             ..default()
         }
@@ -178,7 +182,8 @@ pub struct Cat;
 impl UnitChildrenSpawnParamsFactory for Cat {
     fn create_unit_bundle(&self) -> UnitBundle {
         UnitBundle {
-            movement: Movement { speed: 250.0 },
+            movement: Movement { speed: 300.0 },
+            health: Health(125),
             transform: Transform::from_scale(Vec3::splat(1.4)),
             ..default()
         }
@@ -239,6 +244,7 @@ impl UnitChildrenSpawnParamsFactory for Knight {
     fn create_unit_bundle(&self) -> UnitBundle {
         UnitBundle {
             movement: Movement { speed: 250.0 },
+            health: Health(90),
             transform: Transform::from_scale(Vec3::splat(1.5)),
             ..default()
         }
@@ -319,7 +325,7 @@ impl Default for UnitResource {
     fn default() -> Self {
         Self(
             [
-                (UnitType::Acolyte, UnitConfig { cost: 45 }),
+                (UnitType::Acolyte, UnitConfig { cost: 40 }),
                 (UnitType::Warrior, UnitConfig { cost: 30 }),
                 (UnitType::Cat, UnitConfig { cost: 20 }),
             ]
