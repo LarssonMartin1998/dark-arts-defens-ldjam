@@ -30,11 +30,7 @@ impl Default for GameState {
     }
 }
 
-pub fn init_game_system(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut events: EventWriter<GameEvent>,
-) {
+pub fn init_game_system(mut commands: Commands, mut events: EventWriter<GameEvent>) {
     commands.spawn(Camera2dBundle::default());
     events.send(crate::dark_arts_defense::GameEvent::StartGame);
 }
